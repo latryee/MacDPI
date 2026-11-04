@@ -1,0 +1,75 @@
+{
+  "date": "2026-11-04",
+  "os": "macOS-26.6-arm64-arm-64bit",
+  "architecture": "arm64",
+  "tests": [
+    "CONNECT with pipelined tunnel data",
+    "system resolver localhost and numeric-address forwarding",
+    "16 concurrent streams, 8 workers, 4 MiB integrity",
+    "client half-close preserves final server bytes",
+    "malformed CONNECT rejected",
+    "disallowed destination port rejected",
+    "connection reset and recovery",
+    "150 sequential connections and memory sample",
+    "stop releases listener and all sessions",
+    "private address blocked by production policy",
+    "capacity, handshake timeout, and capacity recovery",
+    "idle tunnel deadline",
+    "disable cancels an active tunnel",
+    "same-port restart after active tunnel shutdown",
+    "failed upstream connection closes safely",
+    "incomplete TLS handshake deadline",
+    "standard: TLS 1.2 verified fixture handshake",
+    "compatibility: TLS 1.2 verified fixture handshake",
+    "advanced: TLS 1.2 verified fixture handshake",
+    "end-to-end certificate rejection remains enforced",
+    "standard: TLS 1.3 verified fixture handshake (system openssl)",
+    "compatibility: TLS 1.3 verified fixture handshake (system openssl)",
+    "advanced: TLS 1.3 verified fixture handshake (system openssl)"
+  ],
+  "benchmarks": {
+    "engine_idle": {
+      "interval_seconds": 5.007536207999999,
+      "cpu_percent": 0.0,
+      "rss_mib": 7.64
+    },
+    "connect_echo_ms": {
+      "baseline_median": 0.23987500000011153,
+      "proxy_median": 1.0735415000002746,
+      "samples_each": 20
+    },
+    "baseline": {
+      "roundtrip_mib_per_second": 1034.8562882136846,
+      "payload_mib_each_direction": 4,
+      "seconds": 0.007730542000000007
+    },
+    "proxy": {
+      "roundtrip_mib_per_second": 447.3397265635936,
+      "payload_mib_each_direction": 4,
+      "seconds": 0.01788349999999994
+    },
+    "paced_active": {
+      "interval_seconds": 3.0018139999999995,
+      "payload_mib_each_direction": 18.75,
+      "engine_cpu_percent": 4.664,
+      "engine_rss_mib": 11.296875
+    },
+    "memory_stability": {
+      "connections": 150,
+      "before_rss_mib": 11.296875,
+      "after_rss_mib": 12.328125
+    }
+  },
+  "engine_final_snapshot": {
+    "accepted": 214,
+    "activeConnections": 0,
+    "downloaded": 28312331,
+    "failures": 128,
+    "lastError": "The destination connection failed.",
+    "passedThrough": 192,
+    "rejected": 0,
+    "state": "disabled",
+    "transformed": 0,
+    "uploaded": 28311755
+  }
+}

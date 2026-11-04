@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible MacDPI problem
+body:
+  - type: markdown
+    attributes:
+      value: Please omit websites, IP addresses, payloads and other private traffic. Do not attach packet captures.
+  - type: input
+    id: version
+    attributes:
+      label: MacDPI version, macOS version and architecture
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps, expected result and actual result
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized readiness report and error category
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Profile
+      options: [Standard, Compatibility, Advanced]

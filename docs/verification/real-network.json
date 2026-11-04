@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-04T20:32:24+03:00",
+  "scope": "Public HTTPS APIs/site and unauthenticated Discord WebSocket Hello only; no native game, voice or account test.",
+  "system_settings_changed": false,
+  "tests": {
+    "direct_system_dns": [
+      {
+        "service": "discord_gateway_api",
+        "http_status": 0,
+        "curl_exit": 60,
+        "tls_seconds": 0.0,
+        "total_seconds": 0.161696,
+        "certificate_verified": false,
+        "expected_response": false
+      },
+      {
+        "service": "roblox_website",
+        "http_status": 0,
+        "curl_exit": 60,
+        "tls_seconds": 0.0,
+        "total_seconds": 0.253599,
+        "certificate_verified": false,
+        "expected_response": false
+      },
+      {
+        "service": "roblox_public_api",
+        "http_status": 0,
+        "curl_exit": 60,
+        "tls_seconds": 0.0,
+        "total_seconds": 0.161757,
+        "certificate_verified": false,
+        "expected_response": false
+      }
+    ],
+    "compatibility_cloudflare_doh": [
+      {
+        "service": "discord_gateway_api",
+        "http_status": 0,
+        "curl_exit": 28,
+        "tls_seconds": 0.0,
+        "total_seconds": 8.006924,
+        "certificate_verified": false,
+        "expected_response": false
+      },
+      {
+        "service": "roblox_website",
+        "http_status": 0,
+        "curl_exit": 28,
+        "tls_seconds": 0.0,
+        "total_seconds": 8.006766,
+        "certificate_verified": false,
+        "expected_response": false
+      },
+      {
+        "service": "roblox_public_api",
+        "http_status": 0,
+        "curl_exit": 28,
+        "tls_seconds": 0.0,
+        "total_seconds": 8.006431,
+        "certificate_verified": false,
+        "expected_response": false
+      }
+    ],
+    "standard_cloudflare_doh": [
+      {
+        "service": "discord_gateway_api",
+        "http_status": 200,
+        "curl_exit": 0,
+        "tls_seconds": 0.320218,
+        "total_seconds": 0.394992,
+        "certificate_verified": true,
+        "expected_response": true
+      },
+      {
+        "service": "roblox_website",
+        "http_status": 200,
+        "curl_exit": 0,
+        "tls_seconds": 0.303941,
+        "total_seconds": 0.574334,
+        "certificate_verified": true,
+        "expected_response": true
+      },
+      {
+        "service": "roblox_public_api",
+        "http_status": 200,
+        "curl_exit": 0,
+        "tls_seconds": 0.305095,
+        "total_seconds": 0.457052,
+        "certificate_verified": true,
+        "expected_response": true
+      }
+    ]
+  },
+  "compatibility_snapshot": {
+    "accepted": 3,
+    "activeConnections": 0,
+    "downloaded": 0,
+    "failures": 0,
+    "passedThrough": 3,
+    "rejected": 0,
+    "state": "disabled",
+    "transformed": 0,
+    "uploaded": 962
+  },
+  "discord_websocket": {
+    "tls_verified": true,
+    "http_status": 101,
+    "gateway_hello": true,
+    "seconds": 0.567
+  },
+  "standard_snapshot": {
+    "accepted": 4,
+    "activeConnections": 0,
+    "downloaded": 88518,
+    "failures": 1,
+    "lastError": "The destination connection failed.",
+    "passedThrough": 0,
+    "rejected": 0,
+    "state": "disabled",
+    "transformed": 4,
+    "uploaded": 2036
+  },
+  "limited_check_passed": true
+}

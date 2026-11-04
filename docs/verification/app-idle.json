@@ -1,0 +1,14 @@
+{
+  "disabled": {
+    "interval_seconds": 20.013448167,
+    "cpu_percent": 0.05,
+    "rss_mib": 93.33,
+    "settle_seconds": 9.0
+  },
+  "enabled": {
+    "interval_seconds": 20.0133825,
+    "cpu_percent": 0.25,
+    "rss_mib": 94.92,
+    "settle_seconds": 9.0
+  }
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>io.github.latryee.MacDPI.TransparentProxy</string>
+<key>CFBundleName</key><string>MacDPI Transparent Proxy</string>
+<key>CFBundleExecutable</key><string>MacDPITransparentProxy</string>
+<key>CFBundlePackageType</key><string>SYSX</string>
+<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>LSMinimumSystemVersion</key><string>12.0</string>
+<key>NetworkExtension</key><dict>
+<key>NEProviderClasses</key><dict><key>com.apple.networkextension.app-proxy</key><string>MacDPITransparentProxy.TransparentProxyProvider</string></dict>
+<key>NEMachServiceName</key><string>$(TeamIdentifierPrefix)io.github.latryee.MacDPI.TransparentProxy</string>
+</dict>
+</dict></plist>

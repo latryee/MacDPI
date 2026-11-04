@@ -1,0 +1,21 @@
+# Privacy
+
+MacDPI has no advertising, telemetry, analytics, trackers, account system or update-check request. It sends traffic directly to the destination selected by the configured application. There are no relay servers.
+
+The local proxy receives CONNECT host/port metadata and encrypted tunnel bytes. It temporarily examines the first plaintext TLS ClientHello record, including the location of a visible server name, to choose a split. It does not decrypt private TLS application data, install a root certificate, terminate TLS or possess origin TLS keys. The client's normal certificate verification remains responsible for authenticating the server.
+
+Hostnames and resolved numeric addresses exist in memory during connection setup and in system DNS operations. MacDPI never stores browsing histories, payloads, URLs, passwords, tokens or hostnames in its diagnostics. Aggregate counters and fixed error categories remain in memory for the current engine run. A new enable resets them. No persistent traffic log exists. Copied diagnostics are written to the clipboard only when requested; the OS and clipboard managers may retain clipboard contents.
+
+The app stores its chosen profile, DNS mode, loopback port, split offset and resource limits in its sandbox preferences when enabled. It does not save whether the engine was enabled, and ordinary launches start disabled. Launch-at-login registration changes only after the user explicitly operates that switch. System DNS is the default and may expose requested names to the configured resolver.
+
+**Optional encrypted DNS:** choosing Cloudflare DNS over HTTPS sends destination names for proxied connections to Cloudflare at `https://1.1.1.1/dns-query`, using normal certificate validation. Cloudflare sees those names and the connecting public IP; this is a third-party resolver, not an anonymity service or traffic relay. A/AAAA requests use DNS wire-format POST bodies. There is no silent fallback to system DNS, no cookie/credential storage, no disk cache and no redirect following. At most 256 host results are cached in RAM for their TTL (capped at five minutes); cache and pending requests are cleared when the engine stops. macOS DNS settings are unaffected. Literal destination addresses do not trigger DNS requests. [Cloudflare resolver privacy](https://developers.cloudflare.com/1.1.1.1/privacy/public-dns-resolver/).
+
+**Optional web window (macOS 14+):** Apple's WKWebView renders sites selected by the user with a nonpersistent website data store and an explicit HTTP CONNECT proxy with failover disabled. The window retains session cookies, addresses and website content in memory, and erases its session when the engine stops or the app quits. Websites may load third-party resources or trackers; MacDPI adds no analytics, but is not a content blocker. Microphone/camera requests and native application links are denied. Only the supported HTTPS path is covered; WebRTC/UDP and native apps are not a privacy or routing guarantee. Other browsers and apps are unchanged.
+
+The network path monitor observes OS path availability while the engine is enabled. It sends no connectivity probe. The displayed state is not proof of internet access, destination reachability or DPI bypass.
+
+Tests use generated, ephemeral local certificate material and a memory-only native identity loader on macOS 15+. Test keys stay under ignored `build/` paths and are removed by the fixture context. They are never installed into trust settings or the keychain. Build/test tooling and the OS may maintain their own caches, crash reports and diagnostics outside MacDPI's control.
+
+The separate `scripts/check-real-network.py` requires an explicit external-request acknowledgement. It contacts fixed public Discord/Roblox endpoints and the selected DNS resolver without logging in. Its saved report contains fixed service labels, timing/status/counters, and no response bodies, credentials or remote IP addresses. It is not part of normal local tests or CI.
+
+A separately provisioned transparent provider would receive matching TCP flows from other applications. It is absent from the standard bundle and was not activated during development. Its privacy and lifecycle behavior requires review and real integration testing before distribution.

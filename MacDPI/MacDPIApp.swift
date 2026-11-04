@@ -1,17 +1,14 @@
-//
-//  MacDPIApp.swift
-//  MacDPI
-//
-//  Created by Fırat Berkay Sarıyar on 4.11.2026.
-//
+import AppKit
 
-import SwiftUI
-
+/// AppKit owns window/termination lifetime; SwiftUI renders the complete interface.
 @main
-struct MacDPIApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+enum MacDPIApp {
+    @MainActor
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.regular)
+        withExtendedLifetime(delegate) { app.run() }
     }
 }
