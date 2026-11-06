@@ -22,7 +22,7 @@ final class MacDPIUITests: XCTestCase {
         XCTAssertTrue(status.label == "Disabled" || status.value as? String == "Disabled")
         let toggle = app.buttons["engine-toggle"]
         toggle.click()
-        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == 'Proxy ready' OR value == 'Proxy ready'"), object: status)
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == 'Local proxy ready' OR value == 'Local proxy ready'"), object: status)
         XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed)
         toggle.click()
         let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == 'Disabled' OR value == 'Disabled'"), object: status)

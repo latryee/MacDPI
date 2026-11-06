@@ -1,28 +1,20 @@
 # Compatibility
 
-App and core deployment target: **macOS 12.0**. This keeps Swift concurrency, native SwiftUI materials and the current UI practical without requiring macOS 13-only controls. Network.framework dates to macOS 10.14; SwiftUI to 10.15. A lower target would require UI/concurrency changes and has not been validated.
+MacDPI's host and two system extensions target macOS 12.0. The optional web window uses macOS 14 APIs. Launch at login is available from macOS 13. The minimum deployment target is checked at build time. Runtime testing on older systems and Intel hardware remains outstanding.
 
-| Component/platform | Compilation | Runtime validation |
-| --- | --- | --- |
-| Native app arm64 / macOS 12 target | Verified with Xcode 27.2 / Swift 6.4.2 | macOS 26.6 on Apple Silicon only |
-| Native app x86_64 / macOS 12 target | Verified; included in Universal 2 binary | Intel hardware untested |
-| Core library + CLI | Native arm64 Debug/Release and tests verified | Apple Silicon/macOS 26.6 |
-| Transparent provider arm64 + x86_64 | Verified Universal 2 compilation | Not installed or activated; unverified |
-| macOS 12 Monterey | Deployment target/API compilation verified | OS runtime untested |
-| macOS 13–15 and other later releases | API target compilation only | OS runtime untested |
-| Launch at login | Runtime guarded for macOS 13+ | Registration/unregistration not performed on development host |
-| Xcode project | Original `.xcproj` format; Xcode 27.2 verified | Older Xcode cannot be assumed to read it |
-| Portable app build / Swift package | Swift 5 language mode, tools 5.9 minimum | Older toolchain execution unverified; CI prepared |
-| TLS 1.2 and TLS 1.3 | Complete first ClientHello record reframing | Local certificate-verified handshakes pass for all profiles |
-| Fragmented/oversized/non-TLS first flight | Bounded identity fallback | Parser/stream tests pass; no transformation claim |
-| ECH | Outer visible ClientHello only | No inner-name access or ECH-specific bypass claim |
-| QUIC / HTTP/3 / UDP | Unsupported | Outside CONNECT TCP scope; not silently blocked |
-| Cloudflare DNS over HTTPS | Native URLSession / DNS wire format, macOS 12+ | Limited live A/AAAA resolution and HTTPS check pass; IPv6-only routing untested |
-| Proxied HTTPS web window | Runtime guarded for macOS 14+ | Uses WKWebsiteDataStore proxyConfigurations; other apps unaffected |
-| Real network check | Standard + DoH vs unchanged TLS on 2026-11-04 | Discord API/WebSocket and Roblox site/API pass in one network; [limited scope](docs/REAL_NETWORK_VALIDATION.md) |
+| Capability | Implemented | Tested | Real-world verified |
+| --- | --- | --- | --- |
+| HTTPS proxy | Authenticated loopback CONNECT in the app | Parser, credential and TCP/TLS loopback fixtures | Selected 0.1.0 web/API/WSS requests on one network |
+| Transparent TCP routing | Public numeric IPv4/IPv6 flows, original endpoint, bound interface support | Flow policy and native TCP loopback adapter | Pending signed OS activation |
+| Encrypted DNS | Local A/AAAA DoH and optional system DNS provider | Wire parsing, validation, TCP/UDP framing, cancellation, split routing and failure | Selected local DoH lookups in 0.1.0. Installed DNS provider pending |
+| Transparent UDP forwarding | Bounded public IPv4/IPv6 datagrams | Empty datagrams, payloads up to 65,507 bytes, IPv4/IPv6, backpressure and cancel | Pending signed OS activation |
+| Discord desktop connectivity | General TCP/UDP and optional DNS path | Controlled protocol fixtures. Prior unauthenticated API/WSS sample | Native startup, login, persistent gateway and reconnect pending |
+| Discord voice | General UDP forwarding path | Controlled UDP fixtures | Voice signaling, bidirectional audio and reliability pending |
+| Roblox desktop connectivity | General TCP/UDP and optional DNS path | Controlled protocol fixtures. Prior website/API sample | Native startup and authentication pending |
+| Roblox gameplay | General UDP forwarding path | Controlled UDP fixtures | Game join, play, timeout and reconnect pending |
+| One-click activation | Approval, preference configuration and readiness state machine | Simulated lifecycle and native model tests | macOS approval, enable and restart pending |
+| Reliable shutdown and recovery | Flow drain, stop, removal and emergency control | Mock OS state, bounded resource and local restart checks | Installed rollback, updates and sleep/wake pending |
 
-The local listener is IPv4 loopback only. Destinations may be public IPv4 or global unicast IPv6. Private, loopback, link-local, multicast, IPv4-mapped IPv6 and NAT64 addresses are rejected in production. This intentionally excludes LAN services and some unusual networks. IPv6 routing/NAT64-only networks have not been runtime-tested. Port 443 is the only GUI destination port.
+The transparent provider selects supported outbound flows with public numeric endpoints. LAN/private/reserved destinations, unsupported endpoints, ordinary port 53 DNS and MacDPI's own flows stay outside its forwarding policy. Name-only or unsupported endpoint forms can be declined. Existing flows, VPNs, filters and OS routing policy can affect coverage. IPv6-only/NAT64 deployments remain untested. [Apple architecture and platform limits](docs/APPLE_INTEGRATION_RESEARCH.md).
 
-Standard and Advanced use the same TLS record transformation with different split selection. Compatibility forwards unchanged. An application must support HTTP CONNECT proxy configuration, or use the built-in web window on macOS 14+. SOCKS5 and ordinary plaintext HTTP forwarding are not implemented. Proxy-ignoring applications, existing connections and traffic outside TCP 443 are unaffected. Native Roblox game UDP and Discord voice UDP are outside this release's scope. HTTP/2 over the TLS tunnel is byte-forwarded; controlled HTTP fixtures use HTTP/1.1.
-
-Apple's installed SDK declares NETransparentProxyProvider available from macOS 11; this project uses 12 for consistency. Apple TN3134 documents the system-extension path for direct distribution. Entitlement access, correct Developer ID provisioning and actual approval remain requirements; successful compilation does not establish their availability to a distributor. [Apple deployment matrix](https://developer.apple.com/documentation/technotes/tn3134-network-extension-provider-deployment)
+TLS transformation covers the first complete plaintext ClientHello record on ports 443, 8443 and 9443 in transparent mode and TCP 443 in local mode. Malformed or unsupported first records fall through unchanged. ECH inner names remain encrypted. UDP forwarding keeps application payloads intact and applies no QUIC or UDP circumvention technique. TCP packet boundaries, IP fragments and raw packet injection are outside the design.

@@ -2,128 +2,145 @@ import Foundation
 import Network
 import NetworkExtension
 
-/// Prepared integration: compile-only until signed, approved, and tested on a dedicated Mac.
-final class FlowStream: ByteStream {
-    let flow: NEAppProxyTCPFlow
-    let queue: DispatchQueue
-    init(flow: NEAppProxyTCPFlow, queue: DispatchQueue) { self.flow = flow; self.queue = queue }
-    func receive(_ completion: @escaping (Data?, Bool, Error?) -> Void) {
-        flow.readData { [weak self] data, error in
-            guard let self else { return }
-            self.queue.async {
-                guard (data?.count ?? 0) <= TCPStream.maximumRead else { completion(nil, false, CoreError.capacity); return }
-                completion(data, data?.isEmpty ?? true, error)
-            }
-        }
-    }
-    func send(_ data: Data, final: Bool, completion: @escaping (Error?) -> Void) {
-        if data.isEmpty {
-            if final { flow.closeWriteWithError(nil) }
-            completion(nil); return
-        }
-        flow.write(data) { [weak self] error in
-            guard let self else { return }
-            self.queue.async {
-                if final { self.flow.closeWriteWithError(error) }
-                completion(error)
-            }
-        }
-    }
-    func cancel() { flow.closeReadWithError(nil); flow.closeWriteWithError(nil) }
-}
-
-final class TransparentProxyProvider: NETransparentProxyProvider {
-    private let queue = DispatchQueue(label: "io.macdpi.transparent")
-    private var resolver: HostResolving = SystemResolver()
-    private var enabled = false
-    private var generation = UUID()
-    private var sessions = [UUID: ProxySession]()
-    private var opening = [UUID: NEAppProxyTCPFlow]()
+/// Official flow-based integration. Source compiled/fixture tested; OS interception is never
+/// claimed verified until this signed provider has been explicitly approved and exercised.
+final class TransparentProxyProvider: MDPITransparentProxyBase {
+    private let queue = DispatchQueue(label: "io.macdpi.transparent", qos: .userInitiated)
+    private let resolver = SystemResolver()
     private var configuration = Configuration()
+    private var enabled = false
+    private var sleeping = false
+    private var generation = UUID()
+    private var pendingStart: ((Error?) -> Void)?
+    private var tcp = [UUID: ProxySession]()
+    private var udp = [UUID: DatagramSession]()
+    private struct Opening { let flow: NEAppProxyFlow; let timer: DispatchSourceTimer }
+    private var opening = [UUID: Opening]()
+    private var stats = Snapshot()
 
     override func startProxy(options: [String: Any]?, completionHandler: @escaping (Error?) -> Void) {
-        let values = (protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration
-        var config = Configuration()
-        if let profile = values?["profile"] as? String, let parsed = Profile(rawValue: profile) { config.profile = parsed }
-        if let offset = values?["splitOffset"] as? Int { config.splitOffset = offset }
-        if let dns = values?["dnsMode"] as? String, let mode = DNSMode(rawValue: dns) { config.dnsMode = mode }
-        do { _ = try config.validated() } catch { completionHandler(error); return }
-        let run = queue.sync { () -> UUID in generation = UUID(); enabled = false; return generation }
-        let settings = NETransparentProxyNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-        // Apple permits wildcard address rules with a specific non-DNS port. UDP is never claimed.
-        settings.includedNetworkRules = ["0.0.0.0", "::"].map {
-            NENetworkRule(remoteNetwork: NWHostEndpoint(hostname: $0, port: "443"), remotePrefix: 0,
-                          localNetwork: nil, localPrefix: 0, protocol: .TCP, direction: .outbound)
-        }
-        settings.excludedNetworkRules = [("10.0.0.0", 8), ("127.0.0.0", 8), ("172.16.0.0", 12),
-                                         ("192.168.0.0", 16), ("169.254.0.0", 16), ("::1", 128),
-                                         ("fc00::", 7), ("fe80::", 10)].map {
-            NENetworkRule(remoteNetwork: NWHostEndpoint(hostname: $0.0, port: "0"), remotePrefix: $0.1,
-                          localNetwork: nil, localPrefix: 0, protocol: .TCP, direction: .outbound)
-        }
-        setTunnelNetworkSettings(settings) { [weak self] error in
-            guard let self else { completionHandler(CoreError.stopped); return }
-            self.queue.async {
-                guard self.generation == run else { completionHandler(CoreError.stopped); return }
-                if error == nil {
-                    self.resolver.shutdown()
-                    self.resolver = config.dnsMode == .cloudflare ? HTTPSResolver() : SystemResolver()
-                    self.configuration = config; self.enabled = true
+        let values = (protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration ?? [:]
+        queue.async { [self] in
+            self.shutdown()
+            self.generation = UUID(); let run = self.generation
+            var config = Configuration()
+            if let bytes = values["configuration"] as? Data, let parsed = try? JSONDecoder().decode(Configuration.self, from: bytes) { config = parsed }
+            if let profile = values["profile"] as? String, let parsed = Profile(rawValue: profile) { config.profile = parsed }
+            if let offset = values["splitOffset"] as? Int { config.splitOffset = offset }
+            if let limit = values["maxConnections"] as? Int { config.maxConnections = limit }
+            guard (try? config.validated()) != nil, !config.allowLoopbackForTesting else { completionHandler(CoreError.invalidConfiguration); return }
+            self.configuration = config; self.pendingStart = completionHandler; self.sleeping = false
+            let settings = NETransparentProxyNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
+            // No wildcard-address/port-0 endpoint is constructed. The public all-outbound rule
+            // uses nil endpoints. DNS is deliberately declined by the admission policy below.
+            settings.includedNetworkRules = [NENetworkRule(remoteNetwork: nil, remotePrefix: 0, localNetwork: nil, localPrefix: 0, protocol: .any, direction: .outbound)]
+            // Apple rejects a wildcard address paired with port zero. The numeric admission
+            // policy below already declines all of 0.0.0.0/8, so omit that exclusion rule.
+            let networks: [(String, Int)] = [("10.0.0.0", 8), ("100.64.0.0", 10), ("127.0.0.0", 8),
+                ("169.254.0.0", 16), ("172.16.0.0", 12), ("192.168.0.0", 16), ("224.0.0.0", 4),
+                ("::1", 128), ("fc00::", 7), ("fe80::", 10), ("ff00::", 8)]
+            settings.excludedNetworkRules = networks.map { NENetworkRule(remoteNetwork: NWHostEndpoint(hostname: $0.0, port: "0"), remotePrefix: $0.1, localNetwork: nil, localPrefix: 0, protocol: .any, direction: .outbound) }
+            self.setTunnelNetworkSettings(settings) { [weak self] error in
+                guard let self else { return }
+                self.queue.async {
+                    guard self.generation == run else { return }
+                    self.enabled = error == nil; self.stats = Snapshot(); self.stats.state = error == nil ? .enabled : .failed
+                    let callback = self.pendingStart; self.pendingStart = nil; callback?(error)
                 }
-                completionHandler(error)
             }
         }
     }
+    private func permitted(_ flow: NEAppProxyFlow, host: String, port: UInt16) -> Bool {
+        TransparentPolicy.shouldHandle(endpoint: .init(host: host, port: port), sourceIdentifier: flow.metaData.sourceAppSigningIdentifier,
+                                       isBound: flow.isBound, hasInterface: flow.networkInterface != nil)
+    }
     override func handleNewFlow(_ flow: NEAppProxyFlow) -> Bool {
-        guard let tcp = flow as? NEAppProxyTCPFlow,
-              let remote = tcp.remoteEndpoint as? NWHostEndpoint, let port = UInt16(remote.port), port == 443 else { return false }
-        // Prefer the OS-provided hostname when available: the endpoint may already contain a sinkhole IP.
-        // A missing hostname cannot be reconstructed reliably from encrypted application traffic.
-        let host = tcp.remoteHostname ?? remote.hostname
-        // Local/private literal traffic is left with the original stack. Named flows are validated after DNS.
-        if (IPv4Address(remote.hostname) != nil || IPv6Address(remote.hostname) != nil),
-           !DestinationPolicy.permits(remote.hostname) { return false }
-        return queue.sync {
-            guard enabled, sessions.count + opening.count < configuration.maxConnections else { return false }
-            let id = UUID()
-            opening[id] = tcp
-            // Open has its own deadline; a delayed callback cannot resurrect a stopped/expired flow.
-            queue.asyncAfter(deadline: .now() + configuration.handshakeTimeout) { [weak self] in
-                guard let flow = self?.opening.removeValue(forKey: id) else { return }
-                flow.closeReadWithError(CoreError.timedOut as NSError); flow.closeWriteWithError(CoreError.timedOut as NSError)
+        guard let stream = flow as? NEAppProxyTCPFlow, let endpoint = stream.remoteEndpoint as? NWHostEndpoint,
+              let port = UInt16(endpoint.port), permitted(flow, host: endpoint.hostname, port: port) else { return false }
+        return accept(flow) { [weak self] id in
+            guard let self else { return }
+            let config = TransparentPolicy.configuration(for: port, base: self.configuration)
+            let session = ProxySession(client: FlowStream(flow: stream, queue: self.queue), queue: self.queue, configuration: config, resolver: self.resolver,
+                                       makeUpstream: { host, port in NativeOutboundStream(host: host, port: port, flow: stream) })
+            self.tcp[id] = session
+            session.onTraffic = { [weak self] up, down, transformed, _ in self?.traffic(up: up, down: down, transformed: transformed) }
+            session.onFinish = { [weak self] error in self?.tcp.removeValue(forKey: id); self?.finished(error) }
+            // Preserve the actual numeric destination, including IP-only clients. DNS recovery
+            // happens before application resolution in the separate approved DNS provider.
+            session.start(destination: (endpoint.hostname, port))
+        }
+    }
+    override func acceptUDP(_ flow: NEAppProxyUDPFlow, host: String, port: UInt16) -> Bool {
+        guard permitted(flow, host: host, port: port) else { return false }
+        return accept(flow) { [weak self] id in
+            guard let self else { return }
+            var settings = DatagramConfiguration(); settings.idleTimeout = min(120, self.configuration.idleTimeout)
+            let interfaceIndex = flow.isBound ? flow.networkInterface.map { nw_interface_get_index($0) } : nil
+            let session = DatagramSession(flow: FlowDatagrams(flow: flow, queue: self.queue), queue: self.queue, configuration: settings,
+                                          makeTransport: { UDPTransport(endpoint: $0, interfaceIndex: interfaceIndex) })
+            self.udp[id] = session
+            session.onTraffic = { [weak self] up, down in self?.traffic(up: up, down: down, transformed: nil) }
+            session.onFinish = { [weak self] error in self?.udp.removeValue(forKey: id); self?.finished(error) }
+            session.start()
+        }
+    }
+    private func accept(_ flow: NEAppProxyFlow, opened: @escaping (UUID) -> Void) -> Bool {
+        queue.sync {
+            guard enabled, !sleeping, tcp.count + udp.count + opening.count < configuration.maxConnections else { return false }
+            let id = UUID(), run = generation, timer = DispatchSource.makeTimerSource(queue: queue)
+            opening[id] = Opening(flow: flow, timer: timer)
+            timer.setEventHandler { [weak self] in
+                guard let self, let pending = self.opening.removeValue(forKey: id) else { return }
+                pending.timer.cancel(); pending.flow.closeReadWithError(CoreError.timedOut as NSError); pending.flow.closeWriteWithError(CoreError.timedOut as NSError)
+                self.finished(.timedOut)
             }
-            tcp.open(withLocalEndpoint: nil) { [weak self] error in
+            timer.schedule(deadline: .now() + configuration.handshakeTimeout); timer.resume()
+            flow.open(withLocalEndpoint: nil) { [weak self] error in
                 guard let self else { return }
-                self.queue.async { [self] in
-                    guard self.opening.removeValue(forKey: id) != nil else { return }
-                    guard self.enabled, error == nil else {
-                        tcp.closeReadWithError(error); tcp.closeWriteWithError(error); return
+                self.queue.async {
+                    guard let pending = self.opening.removeValue(forKey: id) else { return }; pending.timer.cancel()
+                    guard self.enabled, self.generation == run, error == nil else {
+                        flow.closeReadWithError(error); flow.closeWriteWithError(error); self.finished(error == nil ? nil : .connectionFailed); return
                     }
-                    let session = ProxySession(client: FlowStream(flow: tcp, queue: self.queue), queue: self.queue,
-                                               configuration: self.configuration, resolver: self.resolver)
-                    self.sessions[id] = session
-                    session.onFinish = { [weak self] _ in self?.sessions.removeValue(forKey: id) }
-                    session.start(destination: (host, port))
+                    self.stats.accepted &+= 1; opened(id); self.stats.activeConnections = self.tcp.count + self.udp.count
                 }
             }
             return true
         }
     }
-    override func stopProxy(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
-        queue.async { self.shutdown(); completionHandler() }
+    private func traffic(up: Int, down: Int, transformed: Bool?) {
+        stats.uploaded &+= UInt64(up); stats.downloaded &+= UInt64(down)
+        if let transformed { if transformed { stats.transformed &+= 1 } else { stats.passedThrough &+= 1 } }
+    }
+    private func finished(_ error: CoreError?) {
+        stats.activeConnections = tcp.count + udp.count
+        if let error { stats.failures &+= 1; stats.lastError = error.rawValue }
+    }
+    private func status() -> Data? {
+        try? JSONEncoder().encode(ProviderStatusMessage(isEnabled: enabled, activeTCPFlows: tcp.count, activeUDPFlows: udp.count,
+                                                      pendingFlows: opening.count, snapshot: stats))
     }
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)? = nil) {
-        // Fixed command vocabulary, no traffic or host metadata returned.
         queue.async {
-            if messageData == Data("stop".utf8) { self.shutdown(); completionHandler?(Data("stopped".utf8)) }
-            else { completionHandler?(Data((self.enabled ? "enabled" : "disabled").utf8)) }
+            guard messageData.count <= 16 else { completionHandler?(nil); return }
+            if messageData == Data("status".utf8) { completionHandler?(self.status()) }
+            else if messageData == Data("stop".utf8) {
+                self.shutdown()
+                self.setTunnelNetworkSettings(nil) { _ in self.queue.async { completionHandler?(self.status()) } }
+            } else { completionHandler?(nil) }
         }
     }
-    private func shutdown() {
-        enabled = false; generation = UUID()
+    override func stopProxy(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) { queue.async { self.shutdown(); completionHandler() } }
+    override func sleep(completionHandler: @escaping () -> Void) { queue.async { self.sleeping = true; self.closeFlows(); completionHandler() } }
+    override func wake() { queue.async { self.sleeping = false } }
+    private func closeFlows() {
         let pending = Array(opening.values); opening.removeAll()
-        pending.forEach { $0.closeReadWithError(nil); $0.closeWriteWithError(nil) }
-        Array(sessions.values).forEach { $0.stop() }; sessions.removeAll()
-        resolver.shutdown()
+        pending.forEach { $0.timer.cancel(); $0.flow.closeReadWithError(nil); $0.flow.closeWriteWithError(nil) }
+        Array(tcp.values).forEach { $0.stop() }; Array(udp.values).forEach { $0.stop() }
+        tcp.removeAll(); udp.removeAll(); stats.activeConnections = 0
+    }
+    private func shutdown() {
+        enabled = false; generation = UUID(); closeFlows(); stats.state = .disabled
+        let callback = pendingStart; pendingStart = nil; callback?(CoreError.stopped)
     }
 }

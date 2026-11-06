@@ -1,0 +1,45 @@
+{
+  "scope": "Real provider transport adapters with controlled loopback sockets. No NetworkExtension flow or OS activation.",
+  "cases": [
+    {
+      "host": "127.0.0.1",
+      "longestSendSeconds": 0.236936167,
+      "passed": true,
+      "receivedBytes": 8388616,
+      "replies": 0,
+      "sends": 128,
+      "sentBytes": 8388608,
+      "transport": "tcp"
+    },
+    {
+      "host": "::1",
+      "longestSendSeconds": 0.236834458,
+      "passed": true,
+      "receivedBytes": 8388616,
+      "replies": 0,
+      "sends": 128,
+      "sentBytes": 8388608,
+      "transport": "tcp"
+    },
+    {
+      "host": "127.0.0.1",
+      "longestSendSeconds": 0,
+      "passed": true,
+      "receivedBytes": 69610,
+      "replies": 7,
+      "sends": 7,
+      "sentBytes": 69610,
+      "transport": "udp"
+    },
+    {
+      "host": "::1",
+      "longestSendSeconds": 0,
+      "passed": true,
+      "receivedBytes": 69610,
+      "replies": 7,
+      "sends": 7,
+      "sentBytes": 69610,
+      "transport": "udp"
+    }
+  ]
+}

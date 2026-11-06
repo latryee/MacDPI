@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "build": "2",
+  "date": "2026-11-05",
+  "toolchain": "Xcode 27.2\nBuild version 27B52",
+  "runtime": "macOS 26.6 arm64",
+  "core_tests_passed": 97,
+  "native_tests_passed": 25,
+  "integration_scenarios_passed": 23,
+  "failures": 0,
+  "app_architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "provider_architectures": {
+    "io.github.latryee.MacDPI.DNSProxy": [
+      "x86_64",
+      "arm64"
+    ],
+    "io.github.latryee.MacDPI.TransparentProxy": [
+      "x86_64",
+      "arm64"
+    ]
+  },
+  "deployment_target": "12.0",
+  "provider_runtime": "unverified; never installed or activated",
+  "public_signing_notarization": "not performed",
+  "github_publication": "not performed",
+  "real_network_scope": "No current live checks. See REAL_NETWORK_VALIDATION.md for the earlier 0.1.0 scope."
+}

@@ -1,9 +1,7 @@
-# MacDPI 0.1.0 — pre-release review
+# MacDPI 0.2.0 local review
 
-MacDPI introduces an independently implemented native HTTP CONNECT proxy that splits the first complete TLS ClientHello into two records while preserving its handshake bytes. Standard and Advanced perform this transformation; Compatibility forwards unchanged. No TLS interception, trusted certificates, relays, telemetry or accounts are used.
+MacDPI now bundles two Universal 2 system extensions. The transparent component handles eligible public TCP and UDP flows through macOS Network Extension. The optional DNS component handles eligible public lookups through Cloudflare DoH and preserves original DNS for local, split and interface-bound queries.
 
-The app includes native controls, menu bar access, bounded streaming, concurrency limits, timeouts, safe shutdown and sanitized diagnostics. Packages target macOS 12+ and contain both arm64 and x86_64 slices. Local runtime tests currently cover Apple Silicon/macOS 26.6. Review TEST_RESULTS.md and PERFORMANCE.md for the exact evidence.
+The native interface uses Mac-wide integration by default. A properly provisioned build follows official macOS approval and uses provider acknowledgements to report active routing and stop status. The ad hoc review artifact allows local diagnostics and cannot activate the system components. In that mode the loopback listener uses a per-launch credential. Existing ClientHello splitting remains available and TLS certificate validation stays with the client.
 
-A limited real-network check on 2026-11-04 passed Discord API/WebSocket and Roblox site/public API connections with Standard plus optional Cloudflare DNS over HTTPS; unchanged TLS timed out. [Evidence and scope](REAL_NETWORK_VALIDATION.md). The macOS 14+ isolated web window provides an HTTPS session without system network changes. Enable alone does not route other applications. Native games/voice UDP, QUIC, automatic strategy selection and DoT remain unsupported. The transparent provider is separately compiled, omitted from ordinary packages and not activated or integration-tested.
-
-Local artifacts use ad hoc signatures and are labeled `local-adhoc`; they are not notarized public downloads. Public distribution needs Developer ID signing, Apple notarization/stapling, Intel/older-OS runtime testing and maintainer review. Do not bypass Gatekeeper. No release was uploaded or published by development scripts.
+The review ZIP, DMG and checksum are local artifacts. Developer ID signing, notarization, installed lifecycle tests, native Discord voice and Roblox gameplay remain pending. [Capability matrix](../COMPATIBILITY.md), [installation and recovery](../INSTALLATION.md), [engineering report](FINAL_REPORT.md).

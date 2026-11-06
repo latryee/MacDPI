@@ -22,16 +22,18 @@ jobs:
           uname -m
       - name: Core tests
         run: swift test --scratch-path build/swift
+      - name: Release configuration and signing gates
+        run: python3 -m unittest discover -s Tests/PackagingTests
       - name: Release engine and native TLS fixture
         run: |
           swift build --scratch-path build/swift -c release
           xcrun swiftc -swift-version 5 Tools/TLSFixture/main.swift -o build/tls-fixture
       - name: Isolated loopback integration tests
-        run: python3 scripts/integration.py
-      - name: Universal 2 app and provider compilation
         run: |
-          scripts/build-app.sh
-          scripts/build-extension.sh
+          python3 scripts/integration.py
+          python3 scripts/test-native-transports.py
+      - name: Universal 2 app and provider compilation
+        run: scripts/build-app.sh
       - name: Prepare local review archive
         run: scripts/package-release.sh --existing
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -50,9 +52,14 @@ jobs:
       - name: Native model and UI lifecycle
         run: |
           runner_arch="$(uname -m)"
+          mkdir -p build/reports
           xcodebuild -version
           xcodebuild -project MacDPI.xcodeproj -scheme MacDPI -configuration Debug \
-            -derivedDataPath build/xcode CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES \
+            -derivedDataPath build/xcode -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES -maximum-test-execution-time-allowance 60 \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= \
+            CODE_SIGNING_ALLOWED=YES PROVISIONING_PROFILE_REQUIRED=NO \
+            MACDPI_INTEGRATION_BUILD=local-review MACDPI_TEAM_PREFIX=UNPROVISIONED. \
             -destination "platform=macOS,arch=$runner_arch" \
             -resultBundlePath build/reports/NativeUI.xcresult test
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

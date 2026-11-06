@@ -8,10 +8,25 @@ public protocol ByteStream: AnyObject {
     func cancel()
 }
 
-public final class TCPStream: ByteStream {
+public protocol OutboundByteStream: ByteStream {
+    func start(queue: DispatchQueue, completion: @escaping (Result<Void, CoreError>) -> Void)
+}
+
+public final class TCPStream: OutboundByteStream {
     public static let maximumRead = 65_536
     public let connection: NWConnection
     public init(_ connection: NWConnection) { self.connection = connection }
+    public func start(queue: DispatchQueue, completion: @escaping (Result<Void, CoreError>) -> Void) {
+        connection.stateUpdateHandler = { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .ready: self.connection.stateUpdateHandler = nil; completion(.success(()))
+            case .failed, .waiting: self.connection.stateUpdateHandler = nil; completion(.failure(.connectionFailed))
+            default: break
+            }
+        }
+        connection.start(queue: queue)
+    }
     public func receive(_ completion: @escaping (Data?, Bool, Error?) -> Void) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: Self.maximumRead) { data, _, eof, error in completion(data, eof, error) }
     }

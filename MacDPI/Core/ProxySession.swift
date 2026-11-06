@@ -7,7 +7,9 @@ public final class ProxySession {
     private let queue: DispatchQueue
     private let configuration: Configuration
     private let resolver: HostResolving
-    private var upstream: TCPStream?
+    private var upstream: OutboundByteStream?
+    private let makeUpstream: (String, UInt16) -> OutboundByteStream
+    private let authenticationToken: String?
     private var resolutionTicket: ResolutionTicket?
     private var timer: DispatchSourceTimer?
     private var header = Data()
@@ -25,8 +27,13 @@ public final class ProxySession {
     public var onFinish: ((CoreError?) -> Void)?
     public var onTraffic: ((Int, Int, Bool?, Bool) -> Void)?
 
-    public init(client: ByteStream, queue: DispatchQueue, configuration: Configuration, resolver: HostResolving) {
+    public init(client: ByteStream, queue: DispatchQueue, configuration: Configuration, resolver: HostResolving, authenticationToken: String? = nil,
+                makeUpstream: @escaping (String, UInt16) -> OutboundByteStream = { host, port in
+                    TCPStream(NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!, using: TCPStream.parameters()))
+                }) {
         self.client = client; self.queue = queue; self.configuration = configuration; self.resolver = resolver
+        self.makeUpstream = makeUpstream
+        self.authenticationToken = authenticationToken
         initial = InitialFlightProcessor(configuration: configuration)
     }
 
@@ -48,8 +55,12 @@ public final class ProxySession {
             // At most one receive beyond the bounded header, including pipelined TLS bytes.
             self.header.append(data)
             do {
-                guard let request = try ConnectRequest.parse(self.header) else {
+                guard let request = try ConnectRequest.parse(self.header, allowProxyAuthentication: self.authenticationToken != nil) else {
                     if eof { self.finish(.invalidRequest) } else { self.readHeader() }; return
+                }
+                if let token = self.authenticationToken, !LocalProxyAuthentication.accepts(header: request.proxyAuthorization, token: token) {
+                    self.client.send(Data("HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"MacDPI\"\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".utf8), final: false) { [weak self] _ in self?.finish(.forbiddenDestination) }
+                    return
                 }
                 let prefix = Data(self.header.dropFirst(request.headerLength))
                 self.header = Data()
@@ -87,15 +98,14 @@ public final class ProxySession {
         guard !closed else { return }
         guard !addresses.isEmpty else { finish(.connectionFailed); return }
         let address = addresses.removeFirst()
-        guard let port = NWEndpoint.Port(rawValue: destinationPort) else { finish(.invalidConfiguration); return }
-        let connection = NWConnection(host: NWEndpoint.Host(address), port: port, using: TCPStream.parameters())
-        upstream = TCPStream(connection)
-        connection.stateUpdateHandler = { [weak self, weak connection] state in
-            guard let self, let connection, !self.closed, self.upstream?.connection === connection else { return }
-            switch state {
-            case .ready:
-                connection.stateUpdateHandler = nil
+        let stream = makeUpstream(address, destinationPort)
+        upstream = stream
+        stream.start(queue: queue) { [weak self, weak stream] result in
+            guard let self, let stream, !self.closed, self.upstream === stream else { return }
+            switch result {
+            case .success:
                 self.tunnelling = true
+                self.touch()
                 let begin = { [weak self] in
                     guard let self, !self.closed else { return }
                     self.readServer()
@@ -107,13 +117,11 @@ public final class ProxySession {
                         if error != nil { self?.finish(.connectionFailed) } else { begin() }
                     }
                 } else { begin() }
-            case .failed, .waiting:
+            case .failure:
                 self.upstream?.cancel(); self.upstream = nil
                 self.connectNext(prefix: prefix, isConnect: isConnect)
-            default: break
             }
         }
-        connection.start(queue: queue)
     }
 
     private func readClient() {

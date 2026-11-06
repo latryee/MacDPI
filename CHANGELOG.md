@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — local review
+
+- Bundled transparent TCP/UDP and optional DNS system extensions for Intel and Apple Silicon.
+- Connected native Enable, status, Disable, removal and emergency stop to the approved integration lifecycle.
+- Added public numeric TCP/UDP flow policy, IPv4/IPv6 datagram forwarding and explicit DNS routing with split-domain preservation.
+- Protected the optional local CONNECT listener with a per-launch credential and retained the existing TLS engine.
+- Added isolated flow, DNS, lifecycle and packaging verification. Installed operation, Developer ID distribution and live desktop acceptance are pending.
+
 ## 0.1.0 — unreleased
 
 - Independent HTTP CONNECT TCP engine with strict loopback binding and public HTTPS scope.

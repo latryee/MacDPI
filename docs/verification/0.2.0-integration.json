@@ -1,0 +1,161 @@
+{
+  "date": "2026-11-05",
+  "os": "macOS-26.6-arm64-arm-64bit",
+  "architecture": "arm64",
+  "tests": [
+    "CONNECT with pipelined tunnel data",
+    "system resolver localhost and numeric-address forwarding",
+    "16 concurrent streams, 8 workers, 4 MiB integrity",
+    "client half-close preserves final server bytes",
+    "malformed CONNECT rejected",
+    "disallowed destination port rejected",
+    "connection reset and recovery",
+    "150 sequential connections and memory sample",
+    "stop releases listener and all sessions",
+    "private address blocked by production policy",
+    "capacity, handshake timeout, and capacity recovery",
+    "idle tunnel deadline",
+    "disable cancels an active tunnel",
+    "same-port restart after active tunnel shutdown",
+    "failed upstream connection closes safely",
+    "incomplete TLS handshake deadline",
+    "standard: TLS 1.2 verified fixture handshake",
+    "compatibility: TLS 1.2 verified fixture handshake",
+    "advanced: TLS 1.2 verified fixture handshake",
+    "end-to-end certificate rejection remains enforced",
+    "standard: TLS 1.3 verified fixture handshake (system openssl)",
+    "compatibility: TLS 1.3 verified fixture handshake (system openssl)",
+    "advanced: TLS 1.3 verified fixture handshake (system openssl)"
+  ],
+  "benchmarks": {
+    "engine_idle": {
+      "interval_seconds": 5.011673792,
+      "cpu_percent": 0.0,
+      "rss_mib": 9.92
+    },
+    "connect_echo_ms": {
+      "baseline_median": 0.18045799999999446,
+      "proxy_median": 1.029895999999919,
+      "samples_each": 20
+    },
+    "baseline": {
+      "roundtrip_mib_per_second": 1083.3319227449851,
+      "payload_mib_each_direction": 4,
+      "seconds": 0.007384624999999367
+    },
+    "proxy": {
+      "roundtrip_mib_per_second": 503.1776296283287,
+      "payload_mib_each_direction": 4,
+      "seconds": 0.015898957999999297
+    },
+    "paced_active": {
+      "interval_seconds": 3.0011263339999994,
+      "payload_mib_each_direction": 18.75,
+      "engine_cpu_percent": 5.331,
+      "engine_rss_mib": 11.890625
+    },
+    "memory_stability": {
+      "connections": 150,
+      "before_rss_mib": 11.890625,
+      "after_rss_mib": 12.921875
+    },
+    "paced_soak": {
+      "interval_seconds": 60.005,
+      "persistent_streams": 4,
+      "short_connections": 300,
+      "verified_chunks_per_stream": [
+        1500,
+        1500,
+        1500,
+        1500
+      ],
+      "payload_mib_each_direction": 375.0,
+      "engine_cpu_percent": 4.483,
+      "initial_rss_mib": 8.31,
+      "final_rss_mib": 11.95,
+      "peak_sampled_rss_mib": 14.22,
+      "samples": [
+        {
+          "elapsed_seconds": 5.0,
+          "rss_kib": 13152,
+          "cpu_seconds": 0.31
+        },
+        {
+          "elapsed_seconds": 10.01,
+          "rss_kib": 13488,
+          "cpu_seconds": 0.59
+        },
+        {
+          "elapsed_seconds": 15.21,
+          "rss_kib": 13856,
+          "cpu_seconds": 0.84
+        },
+        {
+          "elapsed_seconds": 20.41,
+          "rss_kib": 14080,
+          "cpu_seconds": 1.1
+        },
+        {
+          "elapsed_seconds": 25.6,
+          "rss_kib": 14304,
+          "cpu_seconds": 1.32
+        },
+        {
+          "elapsed_seconds": 30.61,
+          "rss_kib": 14336,
+          "cpu_seconds": 1.52
+        },
+        {
+          "elapsed_seconds": 35.61,
+          "rss_kib": 13920,
+          "cpu_seconds": 1.72
+        },
+        {
+          "elapsed_seconds": 40.81,
+          "rss_kib": 14240,
+          "cpu_seconds": 1.94
+        },
+        {
+          "elapsed_seconds": 46.01,
+          "rss_kib": 14224,
+          "cpu_seconds": 2.14
+        },
+        {
+          "elapsed_seconds": 51.01,
+          "rss_kib": 14400,
+          "cpu_seconds": 2.34
+        },
+        {
+          "elapsed_seconds": 56.01,
+          "rss_kib": 14560,
+          "cpu_seconds": 2.53
+        }
+      ],
+      "sigterm_to_exit_ms": 2.26,
+      "engine_final_snapshot": {
+        "accepted": 304,
+        "activeConnections": 0,
+        "downloaded": 393217804,
+        "failures": 0,
+        "passedThrough": 304,
+        "rejected": 0,
+        "state": "disabled",
+        "transformed": 0,
+        "uploaded": 393216904
+      },
+      "notes": "Short-client writes half-closed and server trailer verified. Xcode work resumed during this run."
+    }
+  },
+  "engine_final_snapshot": {
+    "accepted": 214,
+    "activeConnections": 0,
+    "downloaded": 28312331,
+    "failures": 82,
+    "lastError": "The destination connection failed.",
+    "passedThrough": 192,
+    "rejected": 0,
+    "state": "disabled",
+    "transformed": 0,
+    "uploaded": 28311755
+  }
+}

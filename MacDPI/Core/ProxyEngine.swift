@@ -11,13 +11,16 @@ public protocol EngineControlling: AnyObject {
 public final class ProxyEngine: EngineControlling, @unchecked Sendable {
     private let queue = DispatchQueue(label: "io.macdpi.engine", qos: .userInitiated)
     private let injectedResolver: HostResolving?
+    private let authenticationToken: String?
     private var resolver: HostResolving?
     private var listener: NWListener?
     private var sessions = [UUID: ProxySession]()
     private var stats = Snapshot()
     private var configuration = Configuration()
     private var pendingStart: ((Result<Void, CoreError>) -> Void)?
-    public init(resolver: HostResolving? = nil) { injectedResolver = resolver }
+    public init(authenticationToken: String? = nil, resolver: HostResolving? = nil) {
+        self.authenticationToken = authenticationToken; injectedResolver = resolver
+    }
 
     public func snapshot(_ completion: @escaping (Snapshot) -> Void) { queue.async { completion(self.stats) } }
 
@@ -26,6 +29,9 @@ public final class ProxyEngine: EngineControlling, @unchecked Sendable {
             guard self.listener == nil else { completion(.failure(.invalidConfiguration)); return }
             do {
                 self.configuration = try configuration.validated()
+                if let token = authenticationToken {
+                    guard (16...128).contains(token.utf8.count), token.utf8.allSatisfy({ (33...126).contains($0) }) else { throw CoreError.invalidConfiguration }
+                }
                 self.resolver = self.injectedResolver ?? (configuration.dnsMode == .cloudflare ? HTTPSResolver() : SystemResolver())
                 let parameters = TCPStream.parameters()
                 parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: configuration.port)!)
@@ -66,7 +72,7 @@ public final class ProxyEngine: EngineControlling, @unchecked Sendable {
             stats.rejected &+= 1; connection.cancel(); return
         }
         let id = UUID()
-        let session = ProxySession(client: TCPStream(connection), queue: queue, configuration: configuration, resolver: resolver)
+        let session = ProxySession(client: TCPStream(connection), queue: queue, configuration: configuration, resolver: resolver, authenticationToken: authenticationToken)
         sessions[id] = session; stats.activeConnections = sessions.count; stats.accepted &+= 1
         session.onTraffic = { [weak self] up, down, transformed, _ in
             guard let self else { return }

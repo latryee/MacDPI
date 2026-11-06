@@ -77,3 +77,214 @@ final class MacDPITests: XCTestCase {
         XCTAssertTrue(model.diagnostics.contains("not installed"))
     }
 }
+
+@MainActor
+private final class FakeIntegrationDriver: IntegrationDriving {
+    var observationChanged: ((IntegrationObservation) -> Void)?
+    var value = IntegrationObservation()
+    var inspections = 0, installs = 0, starts = 0, stops = 0, removals = 0
+    var startError: IntegrationFailure?
+    var stopError: IntegrationFailure?
+    var delayedStart: ((Result<IntegrationObservation, IntegrationFailure>) -> Void)?
+    var delayStart = false
+    var returnUninspectedStop = false
+    init() { value.extensionState = .enabled }
+    func inspect(completion: @escaping (Result<IntegrationObservation, IntegrationFailure>) -> Void) { inspections += 1; completion(.success(value)) }
+    func install(explicitConsent: Bool, completion: @escaping (Result<IntegrationInstallResult, IntegrationFailure>) -> Void) {
+        guard explicitConsent else { completion(.failure(.consentRequired)); return }
+        installs += 1; completion(.success(.installed))
+    }
+    func start(configuration: Configuration, explicitConsent: Bool, completion: @escaping (Result<IntegrationObservation, IntegrationFailure>) -> Void) {
+        guard explicitConsent else { completion(.failure(.consentRequired)); return }
+        starts += 1
+        if delayStart { delayedStart = completion; return }
+        if let startError { completion(.failure(startError)); return }
+        value.configurationPresent = true; value.ownConfigurationCount = 1
+        value.connection = .connected; value.provider = ProviderStatusMessage(isEnabled: true)
+        value.dns = configuration.dnsMode == .cloudflare ? .init(state: .encryptedActive, detail: "Fixture encrypted DNS") : .system
+        completion(.success(value))
+    }
+    func stop(completion: @escaping (Result<IntegrationObservation, IntegrationFailure>) -> Void) {
+        stops += 1
+        if let stopError { completion(.failure(stopError)); return }
+        value.connection = .disconnected; value.provider = ProviderStatusMessage(isEnabled: false)
+        if returnUninspectedStop { value.systemStateInspected = false }
+        completion(.success(value))
+    }
+    func remove(explicitConsent: Bool, completion: @escaping (Result<IntegrationObservation, IntegrationFailure>) -> Void) {
+        guard explicitConsent else { completion(.failure(.consentRequired)); return }
+        removals += 1; value.configurationPresent = false; value.ownConfigurationCount = 0; value.extensionState = .absent
+        completion(.success(value))
+    }
+}
+
+extension MacDPITests {
+    @MainActor
+    func testInjectedEngineSelectsIsolatedLocalDiagnosticMode() {
+        let engine = FakeEngine(), driver = FakeIntegrationDriver()
+        let model = AppModel(engine: engine, store: MemoryConfigurationStore(), integrationDriver: driver)
+        XCTAssertEqual(model.integrationMode, .localProxy)
+        XCTAssertEqual(driver.inspections, 0); XCTAssertEqual(driver.starts, 0)
+    }
+    @MainActor
+    func testTransparentEnableRequiresReviewBeforeAnyMutation() {
+        let engine = FakeEngine(), driver = FakeIntegrationDriver()
+        let model = AppModel(engine: engine, store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        XCTAssertEqual(driver.inspections, 1); XCTAssertEqual(driver.starts, 0)
+        model.enable()
+        XCTAssertEqual(model.pendingConsent, .enable)
+        XCTAssertEqual(driver.starts, 0); XCTAssertEqual(engine.starts, 0)
+        model.confirmIntegrationConsent()
+        XCTAssertNil(model.pendingConsent); XCTAssertTrue(model.isEnabled)
+        XCTAssertEqual(model.statusTitle, "Transparent routing active")
+        XCTAssertEqual(driver.starts, 1); XCTAssertEqual(engine.starts, 0)
+        model.disable()
+        XCTAssertFalse(model.isEnabled); XCTAssertEqual(driver.stops, 1)
+    }
+    @MainActor
+    func testCancelledSetupDoesNotInstallOrStart() {
+        let engine = FakeEngine(), driver = FakeIntegrationDriver()
+        let model = AppModel(engine: engine, store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        model.setupIntegration(); model.cancelIntegrationConsent(); model.confirmIntegrationConsent()
+        XCTAssertEqual(driver.starts, 0); XCTAssertEqual(driver.installs, 0); XCTAssertEqual(engine.starts, 0)
+    }
+    @MainActor
+    func testIntegrationFailureNeverFallsBackToLocalProxy() {
+        let engine = FakeEngine(), driver = FakeIntegrationDriver(); driver.startError = .permissionDenied
+        let model = AppModel(engine: engine, store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        model.enable(); model.confirmIntegrationConsent()
+        XCTAssertFalse(model.isEnabled); XCTAssertEqual(model.integrationStatus.phase, .failed)
+        XCTAssertEqual(engine.starts, 0); XCTAssertNotNil(model.error)
+    }
+    @MainActor
+    func testEmergencyStopCancelsDelayedEnable() {
+        let engine = FakeEngine(), driver = FakeIntegrationDriver(); driver.delayStart = true
+        let model = AppModel(engine: engine, store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        model.enable(); model.confirmIntegrationConsent(); model.emergencyStop()
+        var late = driver.value; late.connection = .connected; late.configurationPresent = true
+        late.ownConfigurationCount = 1; late.provider = ProviderStatusMessage(isEnabled: true)
+        driver.delayedStart?(.success(late))
+        XCTAssertFalse(model.isEnabled); XCTAssertFalse(model.busy)
+        XCTAssertEqual(driver.stops, 1); XCTAssertEqual(engine.starts, 0)
+    }
+    @MainActor
+    func testRemovalRequiresItsOwnConsent() {
+        let driver = FakeIntegrationDriver()
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        model.requestIntegrationRemoval()
+        XCTAssertEqual(model.pendingConsent, .remove); XCTAssertEqual(driver.removals, 0)
+        model.confirmIntegrationConsent()
+        XCTAssertEqual(driver.removals, 1); XCTAssertEqual(driver.stops, 1)
+    }
+    @MainActor
+    func testModeCannotChangeWhileIntegrationIsActive() {
+        let driver = FakeIntegrationDriver()
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        model.enable(); model.confirmIntegrationConsent()
+        model.integrationMode = .localProxy
+        XCTAssertEqual(model.integrationMode, .transparent); XCTAssertNotNil(model.error)
+        model.disable()
+    }
+    @MainActor
+    func testQuitIsCancelledWhenSystemStopCannotBeVerified() {
+        let driver = FakeIntegrationDriver(); driver.stopError = .stopUnverified
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        var mayQuit: Bool?
+        model.terminate { mayQuit = $0 }
+        XCTAssertEqual(mayQuit, false); XCTAssertNotNil(model.error)
+    }
+    @MainActor
+    func testDeactivationRejectsMissingConsentAndUnrelatedIdentifierWithoutOSRequest() {
+        var result: IntegrationFailure?
+        TransparentIntegrationController.requestOwnedDeactivation(identifier: TransparentIntegrationController.identifier, explicitConsent: false) {
+            if case .failure(let error) = $0 { result = error }
+        }
+        XCTAssertEqual(result, .consentRequired)
+        TransparentIntegrationController.requestOwnedDeactivation(identifier: "com.example.unrelated", explicitConsent: true) {
+            if case .failure(let error) = $0 { result = error }
+        }
+        XCTAssertEqual(result, .unavailable)
+    }
+    @MainActor
+    func testNeverMutatedUnsupportedBuildMayQuitWithoutClaimingGlobalDisconnect() {
+        let driver = FakeIntegrationDriver(); driver.returnUninspectedStop = true
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), integrationDriver: driver, mode: .transparent)
+        var mayQuit: Bool?
+        model.terminate { mayQuit = $0 }
+        XCTAssertEqual(mayQuit, true)
+        XCTAssertEqual(model.integrationStatus.phase, .unavailable)
+        XCTAssertTrue(model.statusDetail.contains("not inspected"))
+        XCTAssertEqual(driver.starts, 0); XCTAssertEqual(driver.installs, 0)
+    }
+
+    @MainActor
+    func testLocalReviewAdapterStopDoesNotNeedNetworkPreferences() throws {
+        guard IntegrationSigningPreflight.issue() != nil else { throw XCTSkip("This safety check applies to an unsupported/local-review build only.") }
+        let driver = TransparentIntegrationController()
+        var outcome: Result<IntegrationObservation, IntegrationFailure>?
+        driver.stop { outcome = $0 }
+        let observation = try XCTUnwrap(outcome).get()
+        XCTAssertFalse(observation.systemStateInspected)
+        XCTAssertTrue(observation.connection.isStopped)
+        XCTAssertNotNil(observation.preflightIssue)
+    }
+
+    @MainActor
+    func testAuthorizedScopeNeedsOnlyOneClickOnSubsequentEnable() {
+        let driver = FakeIntegrationDriver(), store = MemoryConfigurationStore()
+        let model = AppModel(engine: FakeEngine(), store: store, integrationDriver: driver, mode: .transparent)
+        model.enable(); XCTAssertEqual(model.pendingConsent, .enable)
+        model.confirmIntegrationConsent(); model.disable()
+        model.enable()
+        XCTAssertNil(model.pendingConsent); XCTAssertTrue(model.isEnabled)
+        XCTAssertEqual(driver.starts, 2)
+        model.disable()
+    }
+    @MainActor
+    func testChangedDNSPrivacyScopeRequiresAnotherReview() {
+        let driver = FakeIntegrationDriver(), store = MemoryConfigurationStore()
+        let model = AppModel(engine: FakeEngine(), store: store, integrationDriver: driver, mode: .transparent)
+        model.enable(); model.confirmIntegrationConsent(); model.disable()
+        model.configuration.dnsMode = .cloudflare
+        model.enable()
+        XCTAssertEqual(model.pendingConsent, .enable); XCTAssertEqual(driver.starts, 1)
+        model.confirmIntegrationConsent(); model.disable()
+        model.configuration.dnsBypassDomains = ["corp.example"]
+        model.enable()
+        XCTAssertEqual(model.pendingConsent, .enable); XCTAssertEqual(driver.starts, 2)
+        model.cancelIntegrationConsent()
+    }
+    @MainActor
+    func testPersistedConsentNeverStartsIntegrationOnLaunchAndTLSChangesNeedNoNewReview() {
+        var config = Configuration(); config.profile = .compatibility
+        let store = MemoryConfigurationStore(config, integrationConsent: IntegrationConsentScope(configuration: config))
+        let driver = FakeIntegrationDriver()
+        let model = AppModel(engine: FakeEngine(), store: store, integrationDriver: driver, mode: .transparent)
+        XCTAssertEqual(driver.starts, 0); XCTAssertNil(model.pendingConsent); XCTAssertFalse(model.isEnabled)
+        model.configuration.profile = .advanced; model.configuration.splitOffset = 64
+        model.enable()
+        XCTAssertEqual(driver.starts, 1); XCTAssertNil(model.pendingConsent)
+        model.disable()
+    }
+    @MainActor
+    func testConfirmedRemovalRevokesRememberedConsent() {
+        let config = Configuration(), driver = FakeIntegrationDriver()
+        let store = MemoryConfigurationStore(config, integrationConsent: IntegrationConsentScope(configuration: config))
+        let model = AppModel(engine: FakeEngine(), store: store, integrationDriver: driver, mode: .transparent)
+        model.requestIntegrationRemoval(); model.confirmIntegrationConsent()
+        XCTAssertNil(store.loadIntegrationConsent())
+        model.enable()
+        XCTAssertEqual(model.pendingConsent, .enable)
+        XCTAssertEqual(driver.starts, 0)
+    }
+
+    @MainActor
+    func testNativeTestHostWithoutInjectedEngineUsesIsolatedLocalMode() throws {
+        guard AppModel.isIsolatedLaunch else { throw XCTSkip("Requires XCTest host detection.") }
+        let model = AppModel(store: MemoryConfigurationStore())
+        XCTAssertEqual(model.integrationMode, .localProxy)
+        XCTAssertFalse(model.isEnabled)
+        XCTAssertNil(model.pendingConsent)
+    }
+
+}

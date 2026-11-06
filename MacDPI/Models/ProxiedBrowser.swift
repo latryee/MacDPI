@@ -11,11 +11,12 @@ final class ProxiedWebModel: NSObject, ObservableObject, WKNavigationDelegate, W
     @Published var address = "https://discord.com/app"
     @Published var message = "Choose a site. This window routes HTTPS through MacDPI; native games and voice UDP are not covered."
     let webView: WKWebView
-    init(port: UInt16) {
+    init(port: UInt16, proxyCredential: String? = nil) {
         let configuration = WKWebViewConfiguration()
         let store = WKWebsiteDataStore.nonPersistent()
         var proxy = ProxyConfiguration(httpCONNECTProxy: .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!))
         proxy.allowFailover = false
+        if let proxyCredential { proxy.applyCredential(username: "macdpi", password: proxyCredential) }
         store.proxyConfigurations = [proxy]
         configuration.websiteDataStore = store
         webView = WKWebView(frame: .zero, configuration: configuration)
@@ -73,7 +74,7 @@ private struct ProxiedWebView: NSViewRepresentable {
 @available(macOS 14, *)
 struct ProxiedBrowser: View {
     @StateObject private var model: ProxiedWebModel
-    init(port: UInt16) { _model = StateObject(wrappedValue: ProxiedWebModel(port: port)) }
+    init(port: UInt16, proxyCredential: String? = nil) { _model = StateObject(wrappedValue: ProxiedWebModel(port: port, proxyCredential: proxyCredential)) }
     var body: some View {
         VStack(spacing: 0) {
             HStack {

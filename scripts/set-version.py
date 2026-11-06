@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-import pathlib, plistlib, re, sys
-root=pathlib.Path(__file__).resolve().parents[1]
-if len(sys.argv)!=2 or not re.fullmatch(r'\d+\.\d+\.\d+',sys.argv[1]):
-    raise SystemExit('Usage: scripts/set-version.py MAJOR.MINOR.PATCH')
-version=sys.argv[1]
-(root/'VERSION').write_text(version+'\n')
-p=root/'MacDPI.xcodeproj/project.xcproj'
-p.write_text(re.sub(r'("MARKETING_VERSION": ")[^"]+',lambda m:m[1]+version,p.read_text()))
-p=root/'Extension/Info.plist'
-info=plistlib.loads(p.read_bytes());info['CFBundleShortVersionString']=version
-p.write_bytes(plistlib.dumps(info))
-print('Updated VERSION, Xcode configurations, and provider metadata. Update CHANGELOG.md before packaging.')
+import argparse
+from versioning import advance
+
+parser = argparse.ArgumentParser(description='Update the shared app and provider version and advance the build number.')
+parser.add_argument('version', metavar='MAJOR.MINOR.PATCH')
+args = parser.parse_args()
+try:
+    build = advance(args.version)
+except ValueError as error:
+    parser.error(str(error))
+print(f'MacDPI {args.version}, build {build}, applies to the host and both providers.')

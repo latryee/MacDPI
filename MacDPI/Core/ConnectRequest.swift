@@ -5,10 +5,11 @@ public struct ConnectRequest: Equatable, Sendable {
     public let host: String
     public let port: UInt16
     public let headerLength: Int
+    public let proxyAuthorization: String?
     public static let maximumHeader = 8192
 
     /// nil means incomplete. No URL, credentials, path, zone ID, or request body is accepted.
-    public static func parse(_ data: Data) throws -> ConnectRequest? {
+    public static func parse(_ data: Data, allowProxyAuthentication: Bool = false) throws -> ConnectRequest? {
         guard let end = data.range(of: Data([13, 10, 13, 10]))?.upperBound else {
             if data.count >= maximumHeader { throw CoreError.invalidRequest }
             return nil
@@ -38,12 +39,32 @@ public struct ConnectRequest: Equatable, Sendable {
                   host.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({ !$0.isEmpty && $0.count <= 63 && !$0.hasPrefix("-") && !$0.hasSuffix("-") }) else { throw CoreError.invalidRequest }
         }
         guard !portText.isEmpty, portText.utf8.allSatisfy({ (48...57).contains($0) }), let port = UInt16(portText), port > 0 else { throw CoreError.invalidRequest }
+        var authorization: String?
         for line in lines.dropFirst() where !line.isEmpty {
             guard let colon = line.firstIndex(of: ":"), colon != line.startIndex else { throw CoreError.invalidRequest }
             let name = line[..<colon].lowercased()
             guard name.utf8.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 45 }),
-                  !["content-length", "transfer-encoding", "proxy-authorization"].contains(name) else { throw CoreError.invalidRequest }
+                  !["content-length", "transfer-encoding"].contains(name) else { throw CoreError.invalidRequest }
+            if name == "proxy-authorization" {
+                guard allowProxyAuthentication, authorization == nil else { throw CoreError.invalidRequest }
+                let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                guard value.utf8.count <= 512, value.hasPrefix("Basic "),
+                      Data(base64Encoded: String(value.dropFirst(6))) != nil else { throw CoreError.invalidRequest }
+                authorization = value
+            }
         }
-        return .init(host: host, port: port, headerLength: count)
+        return .init(host: host, port: port, headerLength: count, proxyAuthorization: authorization)
+    }
+}
+
+public enum LocalProxyAuthentication {
+    public static func accepts(header: String?, token: String) -> Bool {
+        let expected = Array(("Basic " + Data(("macdpi:" + token).utf8).base64EncodedString()).utf8)
+        guard let header else { return false }
+        let supplied = Array(header.utf8)
+        guard supplied.count == expected.count else { return false }
+        var difference: UInt8 = 0
+        for index in expected.indices { difference |= supplied[index] ^ expected[index] }
+        return difference == 0
     }
 }

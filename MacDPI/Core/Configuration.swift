@@ -22,8 +22,10 @@ public enum Profile: String, CaseIterable, Codable, Sendable, Identifiable {
 public struct Configuration: Codable, Equatable, Sendable {
     public var port: UInt16 = 8080
     public var profile: Profile = .standard
-    /// Explicitly opt in: sends proxy destination names to Cloudflare, never changes macOS DNS.
+    /// Explicit opt-in to Cloudflare DoH for local proxy lookups or the approved DNS provider.
     public var dnsMode: DNSMode = .system
+    /// Explicit split-DNS exceptions for the approved DNS provider, in addition to OS-supplied domains.
+    public var dnsBypassDomains: [String] = []
     public var splitOffset: Int = 32
     public var maxConnections: Int = 64
     public var handshakeTimeout: TimeInterval = 10
@@ -34,7 +36,7 @@ public struct Configuration: Codable, Equatable, Sendable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case port, profile, dnsMode, splitOffset, maxConnections, handshakeTimeout, idleTimeout, allowLoopbackForTesting, allowedPorts
+        case port, profile, dnsMode, dnsBypassDomains, splitOffset, maxConnections, handshakeTimeout, idleTimeout, allowLoopbackForTesting, allowedPorts
     }
     public init(from decoder: Decoder) throws {
         self.init()
@@ -42,6 +44,7 @@ public struct Configuration: Codable, Equatable, Sendable {
         port = try c.decodeIfPresent(UInt16.self, forKey: .port) ?? port
         profile = try c.decodeIfPresent(Profile.self, forKey: .profile) ?? profile
         dnsMode = try c.decodeIfPresent(DNSMode.self, forKey: .dnsMode) ?? dnsMode
+        dnsBypassDomains = try c.decodeIfPresent([String].self, forKey: .dnsBypassDomains) ?? dnsBypassDomains
         splitOffset = try c.decodeIfPresent(Int.self, forKey: .splitOffset) ?? splitOffset
         maxConnections = try c.decodeIfPresent(Int.self, forKey: .maxConnections) ?? maxConnections
         handshakeTimeout = try c.decodeIfPresent(Double.self, forKey: .handshakeTimeout) ?? handshakeTimeout
@@ -54,7 +57,13 @@ public struct Configuration: Codable, Equatable, Sendable {
         guard port >= 1024, (1...256).contains(maxConnections), (1...16_000).contains(splitOffset),
               handshakeTimeout.isFinite, (1...60).contains(handshakeTimeout),
               idleTimeout.isFinite, (5...3600).contains(idleTimeout),
-              !allowedPorts.isEmpty, allowedPorts.count <= 32, !allowedPorts.contains(0) else {
+              !allowedPorts.isEmpty, allowedPorts.count <= 32, !allowedPorts.contains(0),
+              dnsBypassDomains.count <= 64,
+              dnsBypassDomains.allSatisfy({ domain in
+                  !domain.isEmpty && domain.utf8.count <= 253 && domain.split(separator: ".", omittingEmptySubsequences: false).allSatisfy {
+                      !$0.isEmpty && $0.utf8.count <= 63 && $0.utf8.allSatisfy { (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 }
+                  }
+              }) else {
             throw CoreError.invalidConfiguration
         }
         return self
@@ -94,7 +103,7 @@ public struct StrategyDescriptor: Sendable {
     public let description: String
     public let status: String
     public static let available: [StrategyDescriptor] = [
-        .init(id: "tls-record-split", description: "Reframe a complete plaintext ClientHello without altering handshake bytes. TCP port 443, TLS 1.2/1.3. Single initial record only; bounded fallback for other traffic.", status: "Implemented; local integrity/TLS tests and a dated limited Discord/Roblox network check pass. No universal or native-game coverage claim."),
-        .init(id: "passthrough", description: "Unmodified CONNECT byte stream, with backpressure and half-close.", status: "Implemented; no circumvention claim.")
+        .init(id: "tls-record-split", description: "Reframe a complete plaintext TLS 1.2/1.3 ClientHello without altering handshake bytes. TCP 443 in local mode, 443/8443/9443 in Mac-wide mode.", status: "Controlled TLS integrity tests passed. Installed routing and native application compatibility await verification."),
+        .init(id: "passthrough", description: "Unmodified TCP bytes, with backpressure and half-close.", status: "Verified in controlled forwarding fixtures.")
     ]
 }

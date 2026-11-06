@@ -1,48 +1,42 @@
 # Building and release preparation
 
-## Requirements
-
-A Mac, full Xcode selected as the active developer tools, Swift 5.9+, Python 3 and the system `openssl`. There are no third-party package dependencies. Compilation was verified using Xcode 27.2/Swift 6.4.2 on Apple Silicon/macOS 26.6. Other toolchains are not yet executed in this repository's recorded results.
-
-## Build paths
-
-- `scripts/build-app.sh`: native Universal 2 Release app using `xcrun swiftc`, Icon Utility and ad hoc signing. Deployment target 12.0. Outputs `build/release/MacDPI.app`. Compiles all UI, core and inactive integration-controller sources for both architectures.
-- `MacDPI.xcodeproj`: preserved original Xcode 27.2 project format. App, hosted model tests and UI tests. Debug builds target the current architecture; Release archive explicitly targets both.
-- `swift build --scratch-path build/swift -c release`: headless CLI/core. Run `build/swift/release/macdpi --help`.
-- `scripts/build-extension.sh`: compile-only Universal 2 provider. Does not register, sign, embed or activate it.
-- `scripts/archive.sh`: Xcode Release `.xcarchive` under `build/archive/`, signing disabled. No installation occurs; linker archive paths are metadata, not writes into Applications.
-
-To run hosted native tests:
+Use a Mac with full Xcode selected, Swift 5.9 or later, Python 3 and system OpenSSL for the TLS fixtures. The app and both system extensions target macOS 12 and build for arm64 and x86_64. The native project uses the Xcode 27.2 project format. The portable build script invokes the selected Xcode compiler directly.
 
 ```sh
+scripts/build-app.sh
+scripts/verify-release.sh build/release/MacDPI.app
+scripts/package-release.sh --existing --dmg
+```
+
+The default build embeds both system extensions under `Contents/Library/SystemExtensions`. It uses ad hoc signatures, sets the local-review build marker and omits privileged networking entitlements from the host. The runtime preflight prevents local-review activation. `scripts/build-extension.sh` also builds the two bundles separately. `scripts/archive.sh` prepares an unsigned native Xcode archive for inspection. Use `MACDPI_BUILD_ROOT=build/another-directory` to isolate portable products. The scripts prepare files locally.
+
+```sh
+scripts/test.sh
 xcodebuild -project MacDPI.xcodeproj -scheme MacDPI -configuration Debug \
-  -derivedDataPath build/xcode CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES \
+  -derivedDataPath build/xcode -parallel-testing-enabled NO \
+  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= \
+  CODE_SIGNING_ALLOWED=YES PROVISIONING_PROFILE_REQUIRED=NO \
+  MACDPI_INTEGRATION_BUILD=local-review MACDPI_TEAM_PREFIX=UNPROVISIONED. \
   -destination 'platform=macOS,arch=arm64' test
 ```
 
-Choose the runtime architecture appropriate to your Mac. Xcode 27's XCTest frameworks require macOS 14 for the hosted test targets; this does not raise the app's 12.0 deployment target. UI automation temporarily enables a loopback listener and uses in-memory settings. No launch-at-login or transparent integration mutation is tested.
+Use the local CPU architecture for hosted XCTest. The native test targets require macOS 14 with the tested Xcode toolchain. Test launches isolate integration state from macOS preferences. Loopback TLS 1.3 fixtures require macOS 15 for the memory-only identity loader.
 
-## Packages, signing and notarization
+## Developer ID distribution
 
-```sh
-scripts/package-release.sh             # builds app, local ad hoc ZIP + SHA-256
-scripts/package-release.sh --dmg       # also creates a read-only compressed DMG
-scripts/package-release.sh --existing  # package the existing app without rebuilding/re-signing
-scripts/verify-release.sh build/release/MacDPI.app
-```
-
-Developer ID signing is opt-in through `SIGN_IDENTITY='Developer ID Application: …' scripts/package-release.sh`. The script never invents credentials and never uploads. Keep private keys and provisioning profiles outside source control. Network Extension signing requires additional separately reviewed steps in INSTALLATION.md; normal packages contain no provider.
-
-After explicit authorization and access to a preconfigured keychain notary profile:
+Supply the actual Developer ID Application signing identity, Team ID and a profile for each component. Keep profiles and private keys outside the repository.
 
 ```sh
-scripts/notarize.sh PATH_TO_DEVELOPER_ID_ZIP KEYCHAIN_PROFILE
+SIGN_IDENTITY='Developer ID Application: …' \
+MACDPI_TEAM_ID='YOURTEAMID' \
+MACDPI_HOST_PROFILE='/path/to/host.provisionprofile' \
+MACDPI_EXTENSION_PROFILE='/path/to/transparent.provisionprofile' \
+MACDPI_DNS_PROFILE='/path/to/dns.provisionprofile' \
+scripts/package-release.sh --dmg
 ```
 
-This command uploads to Apple, waits, staples, verifies with Gatekeeper, and repackages the stapled app with updated checksums. It was not run during development. To validate a signed/stapled release use `REQUIRE_NOTARIZATION=1 scripts/verify-release.sh`. A local ad hoc app intentionally cannot satisfy that requirement. [Apple notarization requirements](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)
+The host must be authorized to install system extensions and use both Network Extension capabilities. The transparent child claims only the app-proxy capability. The DNS child claims only the DNS-proxy capability. The script verifies exact identifiers, team, profile validity, the signing certificate and signed entitlements for each slice, then checks the embedded application. The app group and provider Mach service names derive from the validated team. [Apple integration evidence](docs/APPLE_INTEGRATION_RESEARCH.md).
 
-Update versions with `scripts/set-version.py MAJOR.MINOR.PATCH`, review CHANGELOG.md and release notes, then rebuild. VERSION, Xcode marketing version and provider version are kept together. App display version comes from bundle metadata. Build number is currently 1 and should be incremented for successive distribution builds.
+After separate upload authorization and setup of an Apple notary keychain profile, run `scripts/notarize.sh KEYCHAIN_PROFILE`. It makes a fresh archive from the verified Developer ID app, submits it, waits for acceptance, staples, validates Gatekeeper acceptance and regenerates packages and checksums. [Notarization script](scripts/notarize.sh), [Apple notarization documentation](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
 
-CI is prepared for Intel and Apple Silicon macOS 15 runners plus a separate Xcode 27 native UI job. These runner jobs have not been executed remotely. CI runs nonprivileged core and loopback tests, compiles Universal 2 app/provider, verifies the local signature/entitlements and uploads review artifacts to the workflow run. The release workflow prepares artifacts only. GitHub publication remains an explicit maintainer action after approval; for example `gh release create TAG --draft --notes-file docs/RELEASE_NOTES.md build/dist/…` with the exact reviewed signed artifacts. No workflow creates a GitHub Release automatically.
-
-Runner labels were checked against the [GitHub-hosted runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) on 2026-11-04. Action revisions are pinned, with Dependabot updates prepared.
+Update the shared marketing version and advance the build number with `scripts/set-version.py MAJOR.MINOR.PATCH`. The current build number is 2. Xcode and the portable build stamp the same version into the host and both providers. Review the changelog and release notes before packaging. GitHub Actions prepares and checks review artifacts on macOS runners. Remote CI, Developer ID signing and notarization await an authorized run. Publishing is a separate maintainer action. [GitHub runner labels](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).

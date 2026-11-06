@@ -90,7 +90,71 @@ def sample(process):
     cpu = sum(float(n) * 60**i for i, n in enumerate(reversed(parts)))
     return {'rss_kib': rss, 'cpu_seconds': cpu}
 
-def run(binary):
+def paced_soak(binary, target, duration):
+    """Keep four tunnels active, add connection churn, then stop with live clients."""
+    workers, packets_per_second, connections_per_second = 4, 25, 5
+    chunk = bytes(range(256)) * 256
+    with contextlib.ExitStack() as clients:
+        with proxy(binary, target, extra=['--duration', str(duration + 20)]) as (port, process):
+            connections = [clients.enter_context(connect(port, target)) for _ in range(workers)]
+            for connection in connections:
+                connection.sendall(b'x'); assert exact(connection, 1) == b'x'
+            before = sample(process)
+            began = time.monotonic()
+            deadline = began + duration
+
+            def transfer(connection):
+                count = 0
+                while time.monotonic() < deadline and count < duration * packets_per_second:
+                    connection.sendall(chunk)
+                    assert exact(connection, len(chunk)) == chunk
+                    count += 1
+                    time.sleep(max(0, min(deadline, began + count / packets_per_second) - time.monotonic()))
+                return count
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                streams = [pool.submit(transfer, connection) for connection in connections]
+                samples, churn, sample_after = [], 0, began + 5
+                while time.monotonic() < deadline and churn < duration * connections_per_second:
+                    with connect(port, target) as connection:
+                        connection.sendall(b'new')
+                        connection.shutdown(socket.SHUT_WR)
+                        assert exact(connection, 6) == b'newEND'
+                        assert connection.recv(1) == b''
+                    churn += 1
+                    now = time.monotonic()
+                    if now >= sample_after:
+                        samples.append({'elapsed_seconds': round(now - began, 2), **sample(process)})
+                        sample_after = now + 5
+                    time.sleep(max(0, min(deadline, began + churn / connections_per_second) - time.monotonic()))
+                counts = [stream.result() for stream in streams]
+            ended = time.monotonic()
+            after = sample(process)
+            stopping = time.monotonic()
+        stop_ms = (time.monotonic() - stopping) * 1000
+        for connection in connections:
+            assert connection.recv(1) == b'', 'Engine stop left a live client tunnel'
+    snapshot = json.loads(process.final_output.strip().splitlines()[-1])
+    assert snapshot['state'] == 'disabled' and snapshot['activeConnections'] == 0, snapshot
+    assert snapshot['failures'] == 0 and snapshot['accepted'] == workers + churn, snapshot
+    rss_samples = [reading['rss_kib'] for reading in [before, *samples, after]]
+    return {
+        'interval_seconds': round(ended - began, 3),
+        'persistent_streams': workers,
+        'short_connections': churn,
+        'verified_chunks_per_stream': counts,
+        'payload_mib_each_direction': sum(counts) * len(chunk) / (1024 * 1024),
+        'engine_cpu_percent': round((after['cpu_seconds'] - before['cpu_seconds']) / (ended - began) * 100, 3),
+        'initial_rss_mib': round(before['rss_kib'] / 1024, 2),
+        'final_rss_mib': round(after['rss_kib'] / 1024, 2),
+        'peak_sampled_rss_mib': round(max(rss_samples) / 1024, 2),
+        'samples': samples,
+        'sigterm_to_exit_ms': round(stop_ms, 2),
+        'engine_final_snapshot': snapshot,
+    }
+
+
+def run(binary, tls_fixture=ROOT/'build/tls-fixture', fixture_dir=ROOT/'build/tls-fixtures', soak_seconds=0):
     report = {'date': time.strftime('%Y-%m-%d'), 'os': platform.platform(), 'architecture': platform.machine(), 'tests': [], 'benchmarks': {}}
     def passed(name):
         report['tests'].append(name)
@@ -227,7 +291,9 @@ def run(binary):
                 s.sendall(b'\x16\x03\x01\x00\x80\x01')
                 assert s.recv(1) == b''
         passed('incomplete TLS handshake deadline')
-    fixture_dir = ROOT / 'build' / 'tls-fixtures'
+        if soak_seconds:
+            report['benchmarks']['paced_soak'] = paced_soak(binary, target, soak_seconds)
+            print(f'PASS {soak_seconds}-second paced loopback soak and live-tunnel stop', flush=True)
     fixture_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=fixture_dir) as tmp:
         key, cert = pathlib.Path(tmp)/'key.pem', pathlib.Path(tmp)/'cert.pem'
@@ -262,7 +328,7 @@ def run(binary):
         target = free_port()
         identity = pathlib.Path(tmp)/'identity.p12'
         subprocess.run(['openssl','pkcs12','-export','-inkey',str(key),'-in',str(cert),'-out',str(identity),'-passout','pass:macdpi-fixture'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        tls13 = subprocess.Popen([str(ROOT/'build/tls-fixture'), str(target), str(identity)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        tls13 = subprocess.Popen([str(tls_fixture), str(target), str(identity)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
             ready, _, _ = select.select([tls13.stdout], [], [], 8)
             assert ready and tls13.stdout.readline().strip() == b'READY', 'Native TLS 1.3 fixture failed'
@@ -280,9 +346,14 @@ def run(binary):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', type=pathlib.Path, default=ROOT/'build/swift/release/macdpi')
+    parser.add_argument('--tls-fixture', type=pathlib.Path, default=ROOT/'build/tls-fixture')
+    parser.add_argument('--fixture-dir', type=pathlib.Path, default=ROOT/'build/tls-fixtures')
     parser.add_argument('--report', type=pathlib.Path, default=ROOT/'build/reports/integration.json')
+    parser.add_argument('--soak-seconds', type=int, default=0, help='Opt in to a paced loopback soak for 15–180 seconds.')
     args = parser.parse_args()
-    result = run(args.binary.resolve())
+    if args.soak_seconds != 0 and not 15 <= args.soak_seconds <= 180:
+        parser.error('--soak-seconds must be 0 or 15–180')
+    result = run(args.binary.resolve(), args.tls_fixture.resolve(), args.fixture_dir.resolve(), args.soak_seconds)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(result, indent=2)+'\n')
     print(json.dumps(result['benchmarks'], indent=2))

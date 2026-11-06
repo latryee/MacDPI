@@ -2,44 +2,34 @@
 # Portable native build, retaining the original Xcode project for IDE development.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version="$(cat VERSION)"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid VERSION' >&2; exit 2; }
-app="build/release/MacDPI.app"
-mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" build/native/arm64 build/native/x86_64 build/native/AppIcon.iconset
+build_root="${MACDPI_BUILD_ROOT:-build}"
+python3 scripts/release-metadata.py check --build-root "$build_root"
+scripts/build-extension.sh
+app="$build_root/release/MacDPI.app"
+entitlements="$build_root/signing/Host.entitlements"
+python3 scripts/release-metadata.py prepare --kind host --bundle "$app" --entitlements "$entitlements"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$app/Contents/Library/SystemExtensions" "$build_root/native/arm64" "$build_root/native/x86_64" "$build_root/native/AppIcon.iconset"
 sdk="$(xcrun --sdk macosx --show-sdk-path)"
 for arch in arm64 x86_64; do
+  xcrun clang -fobjc-arc -fblocks -O2 -isysroot "$sdk" -target "$arch-apple-macos12.0" \
+    -c IntegrationSupport/ControlChannel.m -o "$build_root/native/$arch/ControlChannel.o"
   xcrun swiftc -swift-version 5 -O -whole-module-optimization -parse-as-library -sdk "$sdk" \
     -target "$arch-apple-macos12.0" -module-name MacDPI \
+    -import-objc-header IntegrationSupport/ControlChannel.h \
     MacDPI/Core/*.swift MacDPI/Models/*.swift MacDPI/ContentView.swift MacDPI/MacDPIApp.swift \
-    -o "build/native/$arch/MacDPI"
+    "$build_root/native/$arch/ControlChannel.o" -framework Security \
+    -o "$build_root/native/$arch/MacDPI"
 done
-xcrun lipo -create build/native/arm64/MacDPI build/native/x86_64/MacDPI -output "$app/Contents/MacOS/MacDPI"
+xcrun lipo -create "$build_root/native/arm64/MacDPI" "$build_root/native/x86_64/MacDPI" -output "$app/Contents/MacOS/MacDPI"
 for size in 16 32 128 256 512; do
-  cp "MacDPI/Assets.xcassets/AppIcon.appiconset/icon_${size}x${size}@1x.png" "build/native/AppIcon.iconset/icon_${size}x${size}.png"
-  cp "MacDPI/Assets.xcassets/AppIcon.appiconset/icon_${size}x${size}@2x.png" "build/native/AppIcon.iconset/icon_${size}x${size}@2x.png"
+  cp "MacDPI/Assets.xcassets/AppIcon.appiconset/icon_${size}x${size}@1x.png" "$build_root/native/AppIcon.iconset/icon_${size}x${size}.png"
+  cp "MacDPI/Assets.xcassets/AppIcon.appiconset/icon_${size}x${size}@2x.png" "$build_root/native/AppIcon.iconset/icon_${size}x${size}@2x.png"
 done
-iconutil -c icns build/native/AppIcon.iconset -o "$app/Contents/Resources/AppIcon.icns"
-cat > "$app/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>io.github.latryee.MacDPI</string>
-<key>CFBundleName</key><string>MacDPI</string>
-<key>CFBundleDisplayName</key><string>MacDPI</string>
-<key>CFBundleExecutable</key><string>MacDPI</string>
-<key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>$version</string>
-<key>CFBundleVersion</key><string>1</string>
-<key>LSMinimumSystemVersion</key><string>12.0</string>
-<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
-<key>NSPrincipalClass</key><string>NSApplication</string>
-<key>NSHighResolutionCapable</key><true/>
-<key>NSSupportsAutomaticGraphicsSwitching</key><true/>
-<key>NSHumanReadableCopyright</key><string>Copyright 2026 MacDPI contributors. MIT License.</string>
-</dict></plist>
-PLIST
-# Ad hoc signing only authenticates this local build's integrity; it is not a Developer ID release.
-codesign --force --sign - --options runtime --entitlements MacDPI/App.entitlements "$app"
+iconutil -c icns "$build_root/native/AppIcon.iconset" -o "$app/Contents/Resources/AppIcon.icns"
+for suffix in TransparentProxy DNSProxy; do
+  ditto "$build_root/extension/io.github.latryee.MacDPI.$suffix.systemextension" "$app/Contents/Library/SystemExtensions/io.github.latryee.MacDPI.$suffix.systemextension"
+done
+# Nested code is signed first; local review hosts keep network-only sandbox permissions.
+python3 scripts/release-metadata.py sign --kind host --bundle "$app" --entitlements "$entitlements"
 scripts/verify-release.sh "$app"
-echo "Local ad hoc Universal 2 application: $app"
+echo "Universal 2 application with embedded providers: $app. No network settings were changed."

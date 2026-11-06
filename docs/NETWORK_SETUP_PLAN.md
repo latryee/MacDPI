@@ -1,21 +1,30 @@
-# Prepared network setup; not applied
+# Installed integration acceptance plan
 
-The local engine and opt-in encrypted DNS passed the limited public checks in [REAL_NETWORK_VALIDATION.md](REAL_NETWORK_VALIDATION.md). The native web window rendered Discord and Roblox. System-wide routing has not been enabled.
+The earlier proposal to change the Wi-Fi HTTPS proxy was left unapproved. The Mac-wide acceptance path uses the bundled Network Extension providers. The owner's goal requires separate approval before installation, activation or external service testing.
 
-The next reversible test for applications that honor macOS HTTPS proxy settings is:
+## Before activation
 
-1. Recheck and record the active service's current Secure Web Proxy (HTTPS) configuration immediately before any change. The read-only inspection on 2026-11-04 found the active service named **Wi-Fi**, HTTPS proxy **disabled**, server empty, port 0, proxy authentication off. Do not reuse this baseline if it has changed.
-2. Run MacDPI with Standard, Cloudflare DNS over HTTPS, and listener `127.0.0.1:8080`.
-3. **Only after the owner's explicit approval**, set that service's Secure Web Proxy (HTTPS) to `127.0.0.1`, port `8080`, without authentication. Leave HTTP, SOCKS, PAC, DNS, VPN, routes, interfaces and firewall unchanged. macOS may require the owner to approve an administrator dialog. No password is to be collected by MacDPI or the coding agent.
-4. Start fresh browser/Discord HTTPS connections and inspect the engine counters. Applications can ignore the OS proxy. Already-open sessions do not migrate automatically. This is a test of those applications, not an assertion of system-wide interception.
-5. Restore the recorded HTTPS proxy configuration after the bounded test, before stopping MacDPI. Verify the restored state by reading it again. For the observed disabled baseline, HTTPS proxy must be disabled again; any changed stored host/port values should also be restored where the supported configuration interface permits it.
+Obtain a valid Developer ID Application identity and three matching profiles. Build, notarize and verify the complete Universal 2 package. Record the macOS version, hardware, installed filters, VPN, DNS proxies and resolver state on a dedicated test Mac. Review the plan with the owner, including which extensions may be installed, which DNS or network state may change and how long the test will run. Keep a known working way to access System Settings and restore connectivity. [Signing requirements](../BUILDING.md), [Apple deployment matrix](https://developer.apple.com/documentation/technotes/tn3134-network-extension-provider-deployment).
 
-**Risk:** apps using the HTTPS proxy may lose connectivity while the engine is stopped/crashed or if setup is wrong. Recording/restoring the original proxy configuration is the rollback. An existing corporate/PAC/VPN configuration must be reviewed instead of overwritten. The app does not perform this change automatically or install a privileged helper.
+## Activation and rollback
 
-The original goal explicitly requires approval before system proxy changes. Ordinary “continue” instructions do not authorize this operation. No such change has been applied.
+1. Begin with System DNS. Check approval denial and cancellation first. Confirm no app-owned configuration stays active after either.
+2. Approve MacDPI in macOS and enable. Require both the OS connection state and a fresh provider reply. On a controlled remote fixture, verify new TCP and UDP flows from a normal client, IPv4 and IPv6 where available, and unchanged LAN reachability. Exercise an existing connection separately.
+3. Disable while flows are active. Confirm the provider drain, disconnected state and ordinary network recovery. Repeat through Quit and Emergency stop. If drain or status fails, follow the System Settings recovery procedure immediately. Check the known baseline again.
+4. With separate DNS approval, verify local, split and public queries with controlled names. Exercise a DoH failure and verify that the public query fails without an original-resolver retry. Test provider crash, host relaunch, sleep/wake, macOS restart, update and removal. Confirm removal of MacDPI's own preferences and deactivation, including any reboot requirement.
+5. Record app and both provider process CPU, RSS and stop duration under controlled traffic. Keep this data separate from the local engine and WebKit benchmarks.
 
-## Remaining work for native games and voice
+Stop if a provider reports an unknown or unhealthy state, connectivity changes outside the agreed scope, or DNS/VPN state deviates from baseline. Restore only the MacDPI settings through its controls or the official OS UI. Confirm previously recorded third-party settings through their owners before attempting to restore them. [Rollback procedure](../INSTALLATION.md).
 
-An HTTPS proxy cannot route Roblox gameplay UDP, Discord voice UDP or arbitrary proxy-ignoring apps. Approval for the HTTPS proxy test does not solve or authorize those capabilities. A signed, provisioned and owner-approved supported Network Extension architecture with DNS and necessary transport coverage must be developed and tested before claiming that behavior. The current separate transparent provider handles TCP 443 only, prefers an OS-supplied remote hostname when available, and cannot reliably undo DNS filtering when only a previously resolved IP is supplied. It is a compile-only preparation, not a finished universal integration.
+## Native application acceptance
 
-Developer ID identity, correct Apple entitlements/profiles, real extension lifecycle tests, Intel/older-OS runtime checks and authenticated game/voice validation remain outstanding. None can be replaced by a green compile result or by disabling macOS security protections. [Apple's provider deployment requirements](https://developer.apple.com/documentation/technotes/tn3134-network-extension-provider-deployment).
+Live service checks require separate authorization. The owner handles any account login and interactions. Record coarse status, duration, profile and failure category. Keep credentials, payloads, chat messages and account details out of evidence.
+
+| Target | Verify separately |
+| --- | --- |
+| Discord desktop | Cold launch, login, API access, gateway establishment, persistence, reconnect and voice signaling |
+| Discord voice | Joining, bidirectional audio, stable UDP during the call and recovery after reconnect |
+| Roblox desktop | Cold launch, authentication and app startup after browser handoff |
+| Roblox gameplay | Joining, stable native play, UDP traffic, timeout and reconnect |
+
+Compare the same actions with ordinary routing and the selected MacDPI profile on the agreed network. Report failures by capability. The earlier 0.1.0 historical results cover selected web/API and unauthenticated WebSocket requests. [Historical validation](REAL_NETWORK_VALIDATION.md).

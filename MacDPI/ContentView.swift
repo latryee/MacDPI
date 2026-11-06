@@ -23,7 +23,7 @@ struct ContentView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(["Your connection, considered.", "Make it yours.", "See what’s happening."][tab]).font(.title.weight(.semibold))
-                            Text("A lightweight, native local proxy for macOS").foregroundStyle(.secondary)
+                            Text("Native traffic integration for your Mac").foregroundStyle(.secondary)
                         }
                         Spacer()
                         Text("v" + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")).font(.caption.monospaced()).foregroundStyle(.secondary)
@@ -37,6 +37,19 @@ struct ContentView: View {
                 }.padding(32)
             }.frame(minWidth: 550)
         }.frame(minWidth: 790, minHeight: 600)
+        .alert(item: $model.pendingConsent) { consent in
+            Alert(title: Text(consent == .enable ? "Authorize MacDPI integration" : "Remove MacDPI integration?"),
+                  message: Text(consent == .enable ? enableConsent : "Stop supported traffic handling, disable MacDPI’s DNS configuration, remove only MacDPI configurations and request official extension deactivation. macOS may require approval or a restart. Other applications’ profiles are not removed."),
+                  primaryButton: .default(Text(consent == .enable ? "Authorize reviewed setup" : "Remove MacDPI"), action: { model.confirmIntegrationConsent() }),
+                  secondaryButton: .cancel { model.cancelIntegrationConsent() })
+        }
+    }
+    private var enableConsent: String {
+        var text = "MacDPI will request official macOS approval for its bundled networking component and handle supported public TCP/UDP flows from applications across this Mac. LAN, local and unsupported flows remain outside its scope. No remote VPN or trusted certificate is installed. Disable requests verified cleanup; real OS lifecycle and application compatibility still require testing."
+        if model.configuration.dnsMode == .cloudflare {
+            text += "\n\nEncrypted DNS also authorizes the separate DNS component. Cloudflare receives public DNS names and your source IP. Local, split-DNS and interface-bound queries intentionally retain their original resolver; encrypted failures do not fall back. Enabling a DNS proxy can disable another DNS proxy. Before authorizing, review Network Settings and confirm no conflicting corporate, VPN or other DNS proxy configuration is being taken over."
+        }
+        return text
     }
     private func navigation(_ title: String, symbol: String, index: Int) -> some View {
         Button { tab = index } label: {
@@ -49,25 +62,36 @@ struct ContentView: View {
             HStack(spacing: 20) {
                 Image(systemName: model.isEnabled ? "network" : "power.circle").font(.system(size: 42, weight: .light)).foregroundStyle(model.isEnabled ? Color.accentColor : .secondary)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(model.isEnabled ? "Proxy ready" : model.snapshot.state.rawValue.capitalized).font(.title2.weight(.medium)).accessibilityIdentifier("engine-status")
-                    Text(model.isEnabled ? "Listening on 127.0.0.1:\(String(model.configuration.port))" : "Ready when you are. Enable the local proxy to begin.").foregroundStyle(.secondary)
+                    Text(model.statusTitle).font(.title2.weight(.medium)).accessibilityIdentifier("engine-status")
+                    Text(model.statusDetail).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                Button(model.snapshot.state == .starting ? "Cancel" : model.isEnabled ? "Disable" : "Enable") { model.toggle() }
-                    .buttonStyle(.borderedProminent).controlSize(.large).disabled(model.busy && model.snapshot.state != .starting)
+                Button(model.busy ? "Cancel" : model.isEnabled ? "Disable" : "Enable") { model.toggle() }
+                    .buttonStyle(.borderedProminent).controlSize(.large)
                     .keyboardShortcut("e", modifiers: [.command]).accessibilityIdentifier("engine-toggle")
             }
             Divider()
-            Text("Only apps explicitly configured to use this proxy send traffic through MacDPI. This is not system-wide protection.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            GroupBox("Route your traffic") {
+            Text(model.integrationMode == .transparent
+                 ? "Mac-wide integration uses approved macOS providers for supported traffic. Active routing is separate from endpoint reachability and DPI effectiveness."
+                 : "Local diagnostics only: other applications must explicitly use this listener. This mode does not enable Mac-wide routing.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            GroupBox(model.integrationMode == .transparent ? "Supported traffic integration" : "Optional local diagnostics") {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(model.systemProxyLinked ? "macOS HTTPS proxy points to MacDPI. Applications may use their own network stack." : "Other apps are not automatically connected. Enable starts the proxy only.")
-                    Text("For a web-only session without changing Mac settings, open the proxied window. DNS filtering may also require Cloudflare DNS over HTTPS in Settings.").font(.caption).foregroundStyle(.secondary)
-                    HStack {
-                        Button("Open proxied web window") { model.openProxiedBrowser() }.disabled(!model.isEnabled).accessibilityIdentifier("open-proxied-web")
-                        Button("Check setup") { model.refreshRoutingStatus() }
+                    if model.integrationMode == .transparent {
+                        Text("Configured scope: public TCP and UDP across ports; DNS uses a separate approved component when selected. Private/LAN, own-provider traffic and unsupported endpoints are excluded.")
+                        Text("TLS record splitting applies on TCP 443, 8443 and 9443. Other supported streams/datagrams retain their bytes. UDP forwarding is not proof of UDP or QUIC circumvention.").font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Button("Review setup") { model.setupIntegration() }.disabled(model.busy || model.isEnabled).accessibilityIdentifier("integration-setup")
+                            Button("Check status") { model.checkReadiness() }
+                            Button("Emergency stop") { model.emergencyStop() }.accessibilityIdentifier("emergency-stop")
+                        }
+                    } else {
+                        Text("The optional web window sends its HTTPS traffic through the local engine. It is a diagnostic/fallback tool; native game and voice traffic are separate acceptance targets.")
+                        HStack {
+                            Button("Open proxied web window") { model.openProxiedBrowser() }.disabled(!model.isEnabled).accessibilityIdentifier("open-proxied-web")
+                            Button("Check setup") { model.refreshRoutingStatus() }
+                        }
                     }
-                    Text("Native Roblox games, Discord voice and other UDP applications require additional integration; this build does not route them.").font(.caption).foregroundStyle(.secondary)
+                    Text("Discord desktop/voice and Roblox gameplay are not verified by local fixtures or website access. Approved real application testing is still required.").font(.caption).foregroundStyle(.secondary)
                 }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 12) {
@@ -86,7 +110,7 @@ struct ContentView: View {
             HStack {
                 Label(model.reachable.map { $0 ? "Network path available" : "Network path unavailable" } ?? "Network monitoring off", systemImage: "circle.fill").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text("No administrator access needed").font(.caption).foregroundStyle(.secondary)
+                Text(model.integrationMode == .transparent ? "Official macOS authorization required" : "Local diagnostics").font(.caption).foregroundStyle(.secondary)
             }
         }.padding(24).background(Color(NSColor.controlBackgroundColor)).cornerRadius(16)
     }
@@ -100,34 +124,46 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 20) {
             GroupBox("Connection") {
                 VStack(alignment: .leading, spacing: 16) {
+                    Picker("Operation", selection: $model.integrationMode) { ForEach(TrafficIntegrationMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("integration-mode")
                     Picker("Profile", selection: $model.configuration.profile) { ForEach(Profile.allCases) { Text($0.title).tag($0) } }
-                    Picker("DNS for proxy connections", selection: $model.configuration.dnsMode) { ForEach(DNSMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("dns-mode")
-                    Text("Optional Cloudflare DNS over HTTPS sends destination names and your IP to Cloudflare using certificate-verified HTTPS. No system DNS change; no fallback to system DNS if it fails. System DNS remains the default.").font(.caption).foregroundStyle(.secondary)
+                    Picker("DNS", selection: $model.configuration.dnsMode) { ForEach(DNSMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("dns-mode")
+                    Text("Cloudflare receives selected DNS names and your IP over certificate-verified HTTPS. Mac-wide mode requires separate DNS authorization; local/split/interface-bound exceptions preserve the original resolver. Local diagnostics changes only the proxy’s resolver. No silent fallback after encrypted-DNS failure.").font(.caption).foregroundStyle(.secondary)
+                    if model.integrationMode == .transparent {
+                        TextField("Additional split-DNS domains (comma separated)", text: Binding(get: { model.configuration.dnsBypassDomains.joined(separator: ", ") }, set: { model.configuration.dnsBypassDomains = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty } }))
+                    }
                     Text(model.configuration.profile.detail).font(.caption).foregroundStyle(.secondary)
-                    TextField("Local port (1024–65535)", value: $model.configuration.port, formatter: NumberFormatter()).accessibilityIdentifier("proxy-port")
+                    if model.integrationMode == .localProxy { TextField("Local port (1024–65535)", value: $model.configuration.port, formatter: NumberFormatter()).accessibilityIdentifier("proxy-port") }
                     if model.configuration.profile == .advanced {
                         Stepper("Split offset: \(model.configuration.splitOffset) bytes", value: $model.configuration.splitOffset, in: 1...16_000)
                     }
                     Stepper("Maximum connections: \(model.configuration.maxConnections)", value: $model.configuration.maxConnections, in: 1...256)
                 }.padding(12).disabled(model.isEnabled || model.busy)
             }
-            Text("Disable the engine before changing its configuration. Settings are saved when you enable it. The proxy allows public TCP port 443 destinations only.").font(.caption).foregroundStyle(.secondary)
-            GroupBox("Connect other apps") {
+            Text("Disable before changing configuration. Mac-wide mode requires a correctly signed, provisioned build and owner-approved providers. The local diagnostic listener remains restricted to public TCP 443.").font(.caption).foregroundStyle(.secondary)
+            if model.integrationMode == .localProxy { GroupBox("Local proxy diagnostics") {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Apps that honor the macOS Secure Web Proxy (HTTPS) setting can use 127.0.0.1, port \(String(model.configuration.port)). Changing it affects those apps across this network service; record your current settings first.")
+                    Text("The optional listener uses 127.0.0.1, port \(String(model.configuration.port)). The normal app protects it with per-launch credentials kept only in memory; the optional web window supplies them automatically.")
                     HStack {
                         Button("Copy proxy address") { model.copyProxyAddress() }
-                        Button("Open Network Settings") { model.openProxySettings() }
+                        Button("Copy diagnostic credentials") { model.copyDiagnosticCredentials() }
                     }
-                    Text("This app does not change system settings. Restore your previous HTTPS proxy setting before stopping MacDPI. Games and UDP voice do not use this HTTPS proxy.").font(.caption).foregroundStyle(.secondary)
+                    Text("Copying credentials explicitly puts them on the clipboard. Local mode never changes system settings and cannot route native UDP game/voice traffic.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
-            }
+            } }
             if #available(macOS 13, *) {
                 Toggle("Launch MacDPI at login", isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) }))
                 Text("Launch at login never automatically enables the engine. macOS may request approval in Login Items.").font(.caption).foregroundStyle(.secondary)
             }
             GroupBox("Transparent integration") {
-                Text("Permission required · Developer ID signing and Apple entitlements are required. The provider is prepared separately and is not installed or activated by this application. See INSTALLATION.md.").font(.callout).foregroundStyle(.secondary).padding(12)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(model.integrationStatus.detail).font(.callout).foregroundStyle(.secondary)
+                    Text(model.integrationStatus.observation.dns.detail).font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Review setup") { model.setupIntegration() }.disabled(model.busy || model.isEnabled)
+                        Button("Open Network Settings") { model.openProxySettings() }
+                        Button("Remove MacDPI integration") { model.requestIntegrationRemoval() }.disabled(model.busy)
+                    }
+                }.padding(12)
             }
         }
     }

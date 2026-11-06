@@ -83,7 +83,10 @@ public struct InitialFlightProcessor {
     private var buffered = Data()
     public private(set) var decided = false
     private let configuration: Configuration
-    public init(configuration: Configuration) { self.configuration = configuration }
+    public init(configuration: Configuration) {
+        self.configuration = configuration
+        decided = configuration.profile == .compatibility
+    }
     public mutating func consume(_ data: Data, eof: Bool = false) -> (data: Data, transformed: Bool)? {
         if decided { return (data, false) }
         if configuration.profile == .compatibility { decided = true; return (data, false) }

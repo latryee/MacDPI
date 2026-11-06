@@ -1,0 +1,61 @@
+{
+  "architecture": "arm64",
+  "os": "26.6",
+  "fixture": "One optimized Swift probe binary using production UDPTransport and an isolated variant with temporary uninitialized receive scratch storage. Separate Python loopback echo process.",
+  "round_trips_per_sample": 20000,
+  "payload_bytes_per_datagram": 1200,
+  "address_family": "IPv4 loopback",
+  "sample_order": "alternated pair order across three pairs",
+  "bytes_verified": true,
+  "measurement": "Monotonic elapsed and CLOCK_PROCESS_CPUTIME_ID on Swift probe process only.",
+  "limits": "Isolated transport fixture. Other host activity was not controlled. No NE flow, provider process, real network, or platform-level validation.",
+  "summary": {
+    "baseline": {
+      "median_process_cpu_seconds": 0.326308,
+      "median_elapsed_seconds": 0.787021959
+    },
+    "temporary": {
+      "median_process_cpu_seconds": 0.259473,
+      "median_elapsed_seconds": 0.685057125
+    },
+    "process_cpu_reduction_percent": 20.48
+  },
+  "samples": [
+    {
+      "variant": "baseline",
+      "round_trips": 20000,
+      "elapsed_s": 0.787021959,
+      "swift_process_cpu_s": 0.326308
+    },
+    {
+      "variant": "temporary",
+      "round_trips": 20000,
+      "elapsed_s": 0.680581,
+      "swift_process_cpu_s": 0.255833
+    },
+    {
+      "variant": "temporary",
+      "round_trips": 20000,
+      "elapsed_s": 0.685057125,
+      "swift_process_cpu_s": 0.259473
+    },
+    {
+      "variant": "baseline",
+      "round_trips": 20000,
+      "elapsed_s": 0.978188166,
+      "swift_process_cpu_s": 0.341281
+    },
+    {
+      "variant": "baseline",
+      "round_trips": 20000,
+      "elapsed_s": 0.776247834,
+      "swift_process_cpu_s": 0.315195
+    },
+    {
+      "variant": "temporary",
+      "round_trips": 20000,
+      "elapsed_s": 0.732012541,
+      "swift_process_cpu_s": 0.276566
+    }
+  ]
+}
