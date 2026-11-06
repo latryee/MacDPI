@@ -2,6 +2,8 @@
 """Owner-run Personal TUN smoke test. Requires a real terminal and explicit consent."""
 
 import argparse
+import ipaddress
+import json
 import os
 from pathlib import Path
 import re
@@ -16,6 +18,9 @@ APP = ROOT / 'build/personal/release/MacDPI.app'
 HELPERS = APP / 'Contents/Helpers'
 SNAPSHOT = ROOT / 'scripts/test-tun-route-snapshot.sh'
 URL = 'https://example.com/'
+CURL = ['/usr/bin/curl', '--disable', '--silent', '--show-error', '--noproxy', '*']
+DISCORD = 'discord.com'
+GATEWAY_API = f'https://{DISCORD}/api/v10/gateway'
 POLICY_FIELDS = {'primary-service', 'physical-defaults', 'interfaces', 'protected-prefixes',
                  'dns', 'proxies', 'service-order', 'network-policy'}
 
@@ -34,9 +39,50 @@ def fingerprint():
 
 
 def probe(stage):
-    run(['/usr/bin/curl', '--disable', '--silent', '--show-error', '--fail', '--noproxy', '*',
-         '--max-time', '8', '--output', '/dev/null', URL], 10)
+    run(CURL + ['--fail', '--max-time', '8', '--output', '/dev/null', URL], 10)
     print(f'{stage}: certificate-verified HTTPS passed.', flush=True)
+
+
+def discord_doh_address():
+    url = f'https://cloudflare-dns.com/dns-query?name={DISCORD}&type=A'
+    try:
+        output = run(CURL + ['--fail', '--max-time', '6', '--max-filesize', '16384',
+                             '--resolve', 'cloudflare-dns.com:443:1.1.1.1',
+                             '--header', 'Accept: application/dns-json', url], 8, capture=True)
+        message = json.loads(output.stdout)
+        if message['Status'] == 0:
+            for answer in message.get('Answer', []):
+                if answer['type'] == 1:
+                    address = ipaddress.IPv4Address(answer['data'])
+                    if address.is_global and not address.is_multicast and not address.is_reserved:
+                        return str(address)
+    except (ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        pass
+    raise RuntimeError('The Discord probe could not obtain a public IPv4 address from Cloudflare DoH.')
+
+
+def route_interface(address):
+    output = run(['/sbin/route', '-n', 'get', '-inet', address], 3, capture=True).stdout
+    match = re.search(r'^\s*interface:\s+(\w+)\s*$', output, re.MULTILINE)
+    if not match:
+        raise RuntimeError('Could not identify the selected route for the Discord probe.')
+    return match.group(1)
+
+
+def discord_gateway(stage, address=None):
+    pinned = ['--resolve', f'{DISCORD}:443:{address}'] if address else []
+    result = subprocess.run(CURL + ['--ipv4', '--fail', '--max-time', '6', '--max-filesize', '16384']
+                            + pinned + [GATEWAY_API], cwd=ROOT, text=True, capture_output=True, timeout=8)
+    valid = False
+    if result.returncode == 0:
+        try:
+            valid = json.loads(result.stdout).get('url') == 'wss://gateway.discord.gg'
+        except (ValueError, AttributeError):
+            pass
+    path = 'same pinned DoH address' if address else 'system DNS'
+    detail = 'verified gateway response' if valid else f'no verified gateway response (curl {result.returncode})'
+    print(f'{stage}: Discord via {path}: {detail}.', flush=True)
+    return valid
 
 
 class StatusReader:
@@ -67,13 +113,21 @@ class StatusReader:
         raise TimeoutError('The engine did not report its state in time.')
 
 
-def trial():
+def trial(check_discord):
     if os.geteuid() == 0 or not os.isatty(0):
         raise RuntimeError('Run this script as your normal user in Terminal.')
     run([ROOT / 'scripts/verify-release.sh', APP], 20)
     run([SNAPSHOT], 20)
     before = fingerprint()
     probe('Before Enable')
+    discord_address = discord_doh_address() if check_discord else None
+    if discord_address:
+        discord_interface = route_interface(discord_address)
+        existing_interfaces = set(run(['/sbin/ifconfig', '-l'], 3, capture=True).stdout.split())
+        if discord_interface.startswith('utun'):
+            raise RuntimeError('The baseline Discord route already uses a tunnel.')
+        discord_gateway('Before Enable')
+        discord_gateway('Before Enable', discord_address)
     print('One temporary TUN interface and its public routes will be created. System DNS is selected.', flush=True)
     print('If macOS asks for a password, type it only in Terminal. Ctrl-C requests shutdown.', flush=True)
     run(['/usr/bin/sudo', '-v'], 120)
@@ -92,6 +146,12 @@ def trial():
         if phase != 'ACTIVE':
             raise RuntimeError('Activation was not verified.')
         probe('While Active')
+        if discord_address:
+            capture = route_interface(discord_address)
+            if capture in existing_interfaces or not re.fullmatch(r'utun[0-9]+', capture):
+                raise RuntimeError('The Discord probe address was not routed into the active tunnel.')
+            discord_gateway('While Active')
+            discord_verified = discord_gateway('While Active', discord_address)
     finally:
         engine.stdin.close()
         try:
@@ -120,20 +180,30 @@ def trial():
             else:
                 print('All eight policy fingerprints match the baseline.', flush=True)
             probe('After Disable')
+            if discord_address and route_interface(discord_address) != discord_interface:
+                clean = False
+                print('The Discord probe route differs from its baseline.', flush=True)
             if not clean or changed:
                 print('Cleanup requires review. Use the recovery procedure in docs/PERSONAL_TUN.md.', flush=True)
     if not clean or changed:
         raise RuntimeError('The full Enable/Disable trial was not verified.')
-    print('PASS: real TUN activation, HTTPS and route restoration. Discord and Roblox were outside this test.', flush=True)
+    print('PASS: real TUN activation, HTTPS and route restoration.', flush=True)
+    if discord_address:
+        discord_gateway('After Disable')
+        discord_gateway('After Disable', discord_address)
+        if not discord_verified:
+            raise RuntimeError('The pinned Discord gateway request did not pass over the active tunnel.')
+        print('PASS: the pinned public Discord gateway API responded over TUN. Desktop login and voice were outside this test.', flush=True)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--approved', action='store_true', help='Authorize the temporary interface and route trial.')
+    parser.add_argument('--discord', action='store_true', help='Also contact Cloudflare DoH and the public Discord gateway API. No login or DNS setting changes.')
     args = parser.parse_args()
     if not args.approved:
         parser.error('Run with --approved only after reviewing the first trial in docs/PERSONAL_TUN.md.')
     try:
-        trial()
+        trial(args.discord)
     except (RuntimeError, OSError, TimeoutError, subprocess.SubprocessError, KeyboardInterrupt) as error:
         raise SystemExit(f'Trial ended without a pass: {error}')

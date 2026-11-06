@@ -35,7 +35,7 @@ type dialFlow func(context.Context, string, netip.AddrPort) (net.Conn, error)
 type wirePolicy interface {
 	transformTLS([]byte) []byte
 	routeDNS([]byte) dnsAction
-	replyDNS(query, upstream []byte, datagram bool) []byte
+	replyDNS(query, upstream []byte, datagram, encrypted bool) []byte
 }
 
 type stackOptions struct {

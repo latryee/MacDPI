@@ -56,7 +56,7 @@ final class TUNWireBridgeTests: XCTestCase {
                 response.withUnsafeBytes { answer in
                     output.withUnsafeMutableBytes { result in
                         macdpiDNSReply(input.bindMemory(to: UInt8.self).baseAddress, Int32(input.count),
-                                       answer.bindMemory(to: UInt8.self).baseAddress, Int32(answer.count), 1,
+                                       answer.bindMemory(to: UInt8.self).baseAddress, Int32(answer.count), 1, 1,
                                        result.bindMemory(to: UInt8.self).baseAddress, Int32(result.count))
                     }
                 }
@@ -69,13 +69,58 @@ final class TUNWireBridgeTests: XCTestCase {
         }
     }
 
-    private func dnsQuestion(_ domain: String) -> Data {
+    func testEncryptedDNSRejectsPrivateAddressesAndServiceHints() throws {
+        let publicIPv4: [UInt8] = [1, 1, 1, 1]
+        let privateIPv4: [UInt8] = [192, 168, 0, 1]
+        let publicIPv6: [UInt8] = [0x26, 0x06, 0x47, 0] + Array(repeating: 0, count: 11) + [1]
+        let privateIPv6: [UInt8] = [0xfd] + Array(repeating: 0, count: 14) + [1]
+        func hint(_ key: UInt8, _ addresses: [UInt8]) -> [UInt8] {
+            [0, 1, 0, 0, key, 0, UInt8(addresses.count)] + addresses
+        }
+        let records: [(UInt8, [UInt8], [UInt8])] = [
+            (1, publicIPv4, privateIPv4),
+            (28, publicIPv6, privateIPv6),
+            (64, hint(6, publicIPv6), hint(6, privateIPv6)),
+            (65, hint(4, publicIPv4), hint(4, publicIPv4 + privateIPv4)),
+            (65, hint(4, publicIPv4), [0, 1, 0, 0, 4, 0, 4, 1]), // incomplete hint
+        ]
+        for (kind, allowed, blocked) in records {
+            let query = dnsQuestion("public.example", type: kind)
+            func response(_ address: [UInt8]) -> Data {
+                var message = query
+                message[2] = 0x81; message[3] = 0x80; message[7] = 1
+                message.append(contentsOf: [0xc0, 12, 0, kind, 0, 1, 0, 0, 0, 60, 0, UInt8(address.count)])
+                message.append(contentsOf: address)
+                return message
+            }
+            func reply(_ answer: Data, encrypted: Int32) -> Data {
+                var output = Data(repeating: 0, count: 512)
+                let length = query.withUnsafeBytes { input in
+                    answer.withUnsafeBytes { upstream in
+                        output.withUnsafeMutableBytes { result in
+                            macdpiDNSReply(input.bindMemory(to: UInt8.self).baseAddress, Int32(input.count),
+                                           upstream.bindMemory(to: UInt8.self).baseAddress, Int32(upstream.count),
+                                           1, encrypted, result.bindMemory(to: UInt8.self).baseAddress, Int32(result.count))
+                        }
+                    }
+                }
+                return output.prefix(max(0, Int(length)))
+            }
+            XCTAssertEqual(reply(response(allowed), encrypted: 1), response(allowed))
+            XCTAssertEqual(reply(response(blocked), encrypted: 0), response(blocked))
+            let rejection = try DNSPacket(reply(response(blocked), encrypted: 1), response: true)
+            XCTAssertEqual(rejection.flags & 0x000f, 2)
+            XCTAssertEqual(rejection.data.count, query.count)
+        }
+    }
+
+    private func dnsQuestion(_ domain: String, type: UInt8 = 28) -> Data {
         var data = Data([0x12, 0x34, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0])
         for label in domain.split(separator: ".") {
             data.append(UInt8(label.utf8.count))
             data.append(contentsOf: label.utf8)
         }
-        data.append(contentsOf: [0, 0, 28, 0, 1])
+        data.append(contentsOf: [0, 0, type, 0, 1])
         return data
     }
 }

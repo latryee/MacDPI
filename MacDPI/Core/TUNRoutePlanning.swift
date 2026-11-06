@@ -224,6 +224,12 @@ public struct TUNRoutePlan: Equatable, Sendable {
         "172.16.0.0/12", "192.0.0.0/16", "192.88.99.0/24", "192.168.0.0/16", "198.18.0.0/15", "198.51.100.0/24",
         "203.0.113.0/24", "224.0.0.0/3", "2001::/32", "2001:db8::/32", "2002::/16", "3fff::/20"].compactMap(TUNCIDR.init)
 
+    static func permitsPublicAddress(_ bytes: ArraySlice<UInt8>) -> Bool {
+        let family: TUNAddressFamily = bytes.count == 4 ? .ipv4 : .ipv6
+        guard let host = TUNCIDR(family: family, bytes: Array(bytes), prefixLength: bytes.count * 8) else { return false }
+        return roots.contains { $0.contains(host) } && !excluded.contains { $0.contains(host) }
+    }
+
     public static func make(snapshot: TUNRouteSnapshot, lease: TUNRouteLease) throws -> Self {
         guard lease.isValid, snapshot.interfaces.contains(lease.interfaceIndex) else { throw TUNRouteError.invalidLease }
         let baseline = snapshot.baseline

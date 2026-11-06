@@ -43,14 +43,17 @@ func (p swiftWire) routeDNS(query []byte) dnsAction {
 		borrowed(p.domains), C.int32_t(len(p.domains))))
 }
 
-func (p swiftWire) replyDNS(query, upstream []byte, datagram bool) []byte {
-	var udp C.int32_t
+func (p swiftWire) replyDNS(query, upstream []byte, datagram, encrypted bool) []byte {
+	var udp, doh C.int32_t
 	if datagram {
 		udp = 1
 	}
+	if encrypted {
+		doh = 1
+	}
 	output := make([]byte, maxDNSMessage)
 	n := int(C.macdpi_dns_reply(borrowed(query), C.int32_t(len(query)), borrowed(upstream),
-		C.int32_t(len(upstream)), udp, borrowed(output), C.int32_t(len(output))))
+		C.int32_t(len(upstream)), udp, doh, borrowed(output), C.int32_t(len(output))))
 	if n <= 0 || n > len(output) {
 		return nil
 	}

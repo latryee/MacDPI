@@ -85,7 +85,8 @@ func (t *tunnelStack) dnsResponse(query []byte, destination netip.AddrPort, data
 	ctx, cancel := context.WithTimeout(t.ctx, dnsTimeout)
 	defer cancel()
 	var response []byte
-	switch t.options.wire.routeDNS(query) {
+	action := t.options.wire.routeDNS(query)
+	switch action {
 	case dnsOriginal:
 		response, _ = exchangeOriginal(ctx, t.options.dial, destination, query, datagram)
 	case dnsEncrypted:
@@ -94,7 +95,7 @@ func (t *tunnelStack) dnsResponse(query []byte, destination netip.AddrPort, data
 	default:
 		return nil
 	}
-	return t.options.wire.replyDNS(query, response, datagram)
+	return t.options.wire.replyDNS(query, response, datagram, action == dnsEncrypted)
 }
 
 func exchangeOriginal(ctx context.Context, dial dialFlow, destination netip.AddrPort, query []byte, datagram bool) ([]byte, error) {

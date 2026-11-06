@@ -68,13 +68,13 @@ func validTUNSplitDomain(_ entry: Substring) -> Bool {
 /// A failed encrypted lookup yields SERVFAIL and never retries another server.
 @_cdecl("macdpi_dns_reply")
 public func macdpiDNSReply(_ query: UnsafePointer<UInt8>?, _ queryLength: Int32,
-                          _ response: UnsafePointer<UInt8>?, _ responseLength: Int32, _ udp: Int32,
+                          _ response: UnsafePointer<UInt8>?, _ responseLength: Int32, _ udp: Int32, _ encrypted: Int32,
                           _ output: UnsafeMutablePointer<UInt8>?, _ outputCapacity: Int32) -> Int32 {
-    guard udp == 0 || udp == 1, responseLength >= 0,
+    guard (0...1).contains(udp), (0...1).contains(encrypted), responseLength >= 0,
           responseLength == 0 || response != nil,
           let bytes = wireInput(query, length: queryLength, maximum: DNSPacket.maximumSize),
           let packet = try? DNSPacket(bytes, response: false) else { return -1 }
     let answer = wireInput(response, length: responseLength, maximum: DNSPacket.maximumSize)
-        .flatMap { try? packet.reply(DNSPacket($0, response: true), udp: udp == 1) }
+        .flatMap { try? packet.reply(DNSPacket($0, response: true, requirePublicAddresses: encrypted == 1), udp: udp == 1) }
     return writeWireOutput(answer ?? packet.failureReply(), to: output, capacity: outputCapacity)
 }

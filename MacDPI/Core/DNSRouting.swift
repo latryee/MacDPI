@@ -13,7 +13,7 @@ public struct DNSPacket {
     public let udpLimit: Int
     public static let maximumSize = 32_768
 
-    public init(_ data: Data, response: Bool) throws {
+    public init(_ data: Data, response: Bool, requirePublicAddresses: Bool = false) throws {
         guard (12...Self.maximumSize).contains(data.count) else { throw CoreError.invalidRequest }
         let bytes = [UInt8](data)
         func word(_ offset: Int) throws -> UInt16 {
@@ -61,10 +61,54 @@ public struct DNSPacket {
                 guard index >= answers + authorities, owner.isEmpty, !optSeen else { throw CoreError.invalidRequest }
                 optSeen = true; limit = min(4096, max(512, Int(cls)))
             }
+            if response, requirePublicAddresses, cls == 1 {
+                let rdata = cursor..<(cursor + length)
+                if kind == 1 || kind == 28 {
+                    guard length == (kind == 1 ? 4 : 16), TUNRoutePlan.permitsPublicAddress(bytes[rdata]) else {
+                        throw CoreError.forbiddenDestination
+                    }
+                } else if kind == 64 || kind == 65 {
+                    guard Self.validServiceAddressHints(bytes, rdata: rdata) else { throw CoreError.forbiddenDestination }
+                }
+            }
             cursor += length
         }
         guard cursor == bytes.count else { throw CoreError.invalidRequest }
         self.data = data; udpLimit = limit
+    }
+
+    // RFC 9460 service bindings can supply address hints independently of A/AAAA.
+    // Skip the uncompressed target name and inspect only the address parameters.
+    private static func validServiceAddressHints(_ bytes: [UInt8], rdata: Range<Int>) -> Bool {
+        var cursor = rdata.lowerBound + 2 // SvcPriority
+        var targetLength = 0
+        while cursor < rdata.upperBound {
+            let labelLength = Int(bytes[cursor])
+            cursor += 1
+            if labelLength == 0 { break }
+            targetLength += labelLength + 1
+            guard labelLength <= 63, targetLength <= 254, labelLength < rdata.upperBound - cursor else { return false }
+            cursor += labelLength
+        }
+        guard cursor > rdata.lowerBound + 2 else { return false }
+        var previousKey = -1
+        while cursor < rdata.upperBound {
+            guard rdata.upperBound - cursor >= 4 else { return false }
+            let key = Int(bytes[cursor]) << 8 | Int(bytes[cursor+1])
+            let length = Int(bytes[cursor+2]) << 8 | Int(bytes[cursor+3])
+            cursor += 4
+            guard key > previousKey, length <= rdata.upperBound - cursor else { return false }
+            previousKey = key
+            if key == 4 || key == 6 {
+                let width = key == 4 ? 4 : 16
+                guard length > 0, length.isMultiple(of: width) else { return false }
+                for start in stride(from: cursor, to: cursor + length, by: width) {
+                    guard TUNRoutePlan.permitsPublicAddress(bytes[start..<(start + width)]) else { return false }
+                }
+            }
+            cursor += length
+        }
+        return true
     }
     public func validates(response: DNSPacket) -> Bool {
         identifier == response.identifier && name == response.name && type == response.type && queryClass == response.queryClass

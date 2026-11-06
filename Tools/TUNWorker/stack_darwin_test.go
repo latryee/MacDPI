@@ -36,7 +36,7 @@ func (p fixturePolicy) transformTLS(record []byte) []byte {
 	return p.transform(record)
 }
 func (p fixturePolicy) routeDNS([]byte) dnsAction { return p.dns }
-func (p fixturePolicy) replyDNS(query, reply []byte, _ bool) []byte {
+func (p fixturePolicy) replyDNS(query, reply []byte, _, _ bool) []byte {
 	if reply != nil {
 		return reply
 	}
