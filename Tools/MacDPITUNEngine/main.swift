@@ -7,19 +7,23 @@ private struct Options {
     let profile: Int32
     let splitOffset: Int32
     let dnsOverHTTPS: Int32
+    let originRepair: Int32
     let domains: [UInt8]
 
     init?(arguments: [String]) {
-        guard arguments.count == 6, getuid() > 0, geteuid() == getuid(),
+        guard (6...7).contains(arguments.count), getuid() > 0, geteuid() == getuid(),
               arguments[1].withCString({ macdpi_tun_session_valid($0) }) == 1,
               let profile = Int32(arguments[2]), (0...2).contains(profile),
               let offset = Int32(arguments[3]), (1...16_000).contains(offset),
               let doh = Int32(arguments[4]), (0...1).contains(doh),
+              let repair = Int32(arguments.count == 7 ? arguments[6] : "0"),
+              repair == 0 || (repair == 1 && doh == 1 && profile != 0),
               let domains = Self.domains(explicit: arguments[5], encrypted: doh == 1) else { return nil }
         self.session = arguments[1]
         self.profile = profile
         self.splitOffset = offset
         self.dnsOverHTTPS = doh
+        self.originRepair = repair
         self.domains = domains
     }
 
@@ -202,7 +206,7 @@ private func run(_ options: Options) -> Outcome {
         var domains = options.domains
         domains.withUnsafeMutableBufferPointer { buffer in
             _ = macdpi_tun_run(workerPacket, workerLease, ipv4Index, ipv6Index, options.profile, options.splitOffset,
-                               options.dnsOverHTTPS, buffer.baseAddress, Int32(buffer.count))
+                               options.dnsOverHTTPS, options.originRepair, buffer.baseAddress, Int32(buffer.count))
         }
     }
 

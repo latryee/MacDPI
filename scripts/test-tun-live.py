@@ -113,7 +113,7 @@ class StatusReader:
         raise TimeoutError('The engine did not report its state in time.')
 
 
-def trial(check_discord):
+def trial(check_discord, repair_origin):
     if os.geteuid() == 0 or not os.isatty(0):
         raise RuntimeError('Run this script as your normal user in Terminal.')
     run([ROOT / 'scripts/verify-release.sh', APP], 20)
@@ -126,15 +126,20 @@ def trial(check_discord):
         existing_interfaces = set(run(['/sbin/ifconfig', '-l'], 3, capture=True).stdout.split())
         if discord_interface.startswith('utun'):
             raise RuntimeError('The baseline Discord route already uses a tunnel.')
-        discord_gateway('Before Enable')
+        if discord_gateway('Before Enable') and repair_origin:
+            raise RuntimeError('System DNS already reaches the Discord API. There is no failing baseline for origin repair.')
         discord_gateway('Before Enable', discord_address)
-    print('One temporary TUN interface and its public routes will be created. System DNS is selected.', flush=True)
+    print('One temporary TUN interface and its public routes will be created. System DNS settings will stay as found.', flush=True)
+    if repair_origin:
+        print('The engine will also test eligible TLS names using Cloudflare DoH.', flush=True)
     print('If macOS asks for a password, type it only in Terminal. Ctrl-C requests shutdown.', flush=True)
     run(['/usr/bin/sudo', '-v'], 120)
 
     session = str(uuid.uuid4())
-    engine = subprocess.Popen([HELPERS / 'MacDPITUNEngine', session, '1', '32', '0', ''],
-                              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    engine_args = [HELPERS / 'MacDPITUNEngine', session, '1', '32', '1' if repair_origin else '0', '']
+    if repair_origin:
+        engine_args.append('1')
+    engine = subprocess.Popen(engine_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     status = StatusReader(engine.stdout)
     broker = None
     clean = False
@@ -151,7 +156,7 @@ def trial(check_discord):
             capture = route_interface(discord_address)
             if capture in existing_interfaces or not re.fullmatch(r'utun[0-9]+', capture):
                 raise RuntimeError('The Discord probe address was not routed into the active tunnel.')
-            discord_gateway('While Active')
+            system_discord_verified = discord_gateway('While Active')
             discord_verified = discord_gateway('While Active', discord_address)
     finally:
         engine.stdin.close()
@@ -195,16 +200,23 @@ def trial(check_discord):
         if not discord_verified:
             raise RuntimeError('The pinned Discord gateway request did not pass over the active tunnel.')
         print('PASS: the pinned public Discord gateway API responded over TUN. Desktop login and voice were outside this test.', flush=True)
+        if repair_origin:
+            if not system_discord_verified:
+                raise RuntimeError('The Discord gateway still failed with the system DNS address and origin repair enabled.')
+            print('PASS: Discord gateway API responded over TUN using the system DNS result with origin repair enabled.', flush=True)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--approved', action='store_true', help='Authorize the temporary interface and route trial.')
     parser.add_argument('--discord', action='store_true', help='Also contact Cloudflare DoH and the public Discord gateway API. No login or DNS setting changes.')
+    parser.add_argument('--repair-origin', action='store_true', help='Enable TLS origin repair for the Discord comparison.')
     args = parser.parse_args()
     if not args.approved:
         parser.error('Run with --approved only after reviewing the first trial in docs/PERSONAL_TUN.md.')
+    if args.repair_origin and not args.discord:
+        parser.error('--repair-origin requires --discord.')
     try:
-        trial(args.discord)
+        trial(args.discord, args.repair_origin)
     except (RuntimeError, OSError, TimeoutError, subprocess.SubprocessError, KeyboardInterrupt) as error:
         raise SystemExit(f'Trial ended without a pass: {error}')

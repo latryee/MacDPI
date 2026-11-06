@@ -13,6 +13,6 @@
 int32_t macdpi_tun_run(int32_t packet_fd, int32_t lease_fd,
                       int32_t ipv4_index, int32_t ipv6_index,
                       int32_t profile, int32_t split_offset,
-                      int32_t doh, uint8_t *domains, int32_t domains_len);
+                      int32_t doh, int32_t origin_repair, uint8_t *domains, int32_t domains_len);
 
 #endif

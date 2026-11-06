@@ -27,6 +27,10 @@ final class CoreTests: XCTestCase {
         let c = Configuration()
         XCTAssertEqual(try c.validated(), c)
         XCTAssertEqual(try JSONDecoder().decode(Configuration.self, from: JSONEncoder().encode(c)), c)
+        XCTAssertFalse(try JSONDecoder().decode(Configuration.self, from: Data("{}".utf8)).tunTLSOriginRepair)
+        var optedIn = c
+        optedIn.tunTLSOriginRepair = true
+        XCTAssertEqual(try JSONDecoder().decode(Configuration.self, from: JSONEncoder().encode(optedIn)), optedIn)
         var bad = c; bad.port = 80; XCTAssertThrowsError(try bad.validated())
         bad = c; bad.maxConnections = 257; XCTAssertThrowsError(try bad.validated())
         bad = c; bad.splitOffset = 0; XCTAssertThrowsError(try bad.validated())

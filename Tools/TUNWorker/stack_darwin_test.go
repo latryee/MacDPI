@@ -271,6 +271,106 @@ func TestSyntheticTCPTunnel(t *testing.T) {
 	}
 }
 
+func TestSyntheticTLSOriginRepair(t *testing.T) {
+	s := makeSyntheticNetwork(t, false)
+	original := netip.MustParseAddr(s.target.String())
+	correct := netip.MustParseAddr("1.1.1.1")
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	const tail = "trailing data"
+	first := []byte{22, 3, 1, 0, 4, 1, 2, 3, 4}
+	got := make(chan []byte, 1)
+	go func() {
+		remote, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer remote.Close()
+		_ = remote.SetDeadline(time.Now().Add(5 * time.Second))
+		if payload, err := io.ReadAll(remote); err == nil {
+			got <- payload
+			_, _ = remote.Write([]byte("ok"))
+		}
+	}()
+	options := stackOptions{
+		profile: 1, encryptedDNS: true,
+		wire: fixturePolicy{transform: func([]byte) []byte { return []byte("split") }},
+		dial: func(ctx context.Context, protocol string, endpoint netip.AddrPort) (net.Conn, error) {
+			if protocol != "tcp" || endpoint != netip.AddrPortFrom(correct, 443) {
+				t.Errorf("unexpected upstream destination: %s %s", protocol, endpoint)
+				return nil, errors.New("unexpected upstream")
+			}
+			return (&net.Dialer{}).DialContext(ctx, "tcp4", listener.Addr().String())
+		},
+		encryptedExchange: func(_ context.Context, query []byte) ([]byte, error) {
+			if string(query) != "question" {
+				t.Errorf("unexpected DNS question: %q", query)
+			}
+			return []byte("answer"), nil
+		},
+		origin: originRepair{
+			candidates: map[netip.Addr]bool{original: true},
+			question: func(record []byte, ipv4 bool) ([]byte, error) {
+				if !ipv4 || !bytes.Equal(record, first) {
+					t.Errorf("unexpected origin repair input: %v %x", ipv4, record)
+				}
+				return []byte("question"), nil
+			},
+			addresses: func(query, answer []byte, ipv4 bool) []netip.Addr {
+				if !ipv4 || string(query) != "question" || string(answer) != "answer" {
+					t.Errorf("unexpected origin answer: %q %q", query, answer)
+				}
+				return []netip.Addr{correct}
+			},
+		},
+	}
+	ctx := s.attach(t, options)
+	client, err := gonet.DialContextTCP(ctx, s.client, s.remote(443), s.protocol)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+	if _, err := client.Write(append(bytes.Clone(first), tail...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	if reply, err := io.ReadAll(client); err != nil || string(reply) != "ok" {
+		t.Fatalf("upstream reply failed: %q %v", reply, err)
+	}
+	select {
+	case payload := <-got:
+		if string(payload) != "split"+tail {
+			t.Fatalf("unexpected forwarded bytes: %q", payload)
+		}
+	case <-ctx.Done():
+		t.Fatal("upstream did not record the payload")
+	}
+}
+
+func TestSuspectTLSOriginsRequiresSharedPublicSingleton(t *testing.T) {
+	shared := netip.MustParseAddr("1.1.1.1")
+	private := netip.MustParseAddr("192.168.0.1")
+	other := netip.MustParseAddr("1.0.0.1")
+	responses := map[string][]netip.Addr{
+		"discord.com.":        {shared, private},
+		"gateway.discord.gg.": {shared},
+		"www.roblox.com.":     {other},
+		"users.roblox.com.":   {other},
+	}
+	candidates := suspectTLSOrigins(context.Background(), func(_ context.Context, _, name string) ([]netip.Addr, error) {
+		return responses[name], nil
+	})
+	if len(candidates) != 1 || !candidates[other] {
+		t.Fatalf("unexpected candidate set: %v", candidates)
+	}
+}
+
 func TestSyntheticUDPTunnel(t *testing.T) {
 	for _, v6 := range []bool{false, true} {
 		family, address := loopback(v6)

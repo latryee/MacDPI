@@ -2,7 +2,7 @@
 
 Personal TUN forwards captured public connections directly from the Mac. The helper's private journal records only route and interface ownership required for recovery. Traffic payloads, DNS contents and destinations are not written to a history. With optional Cloudflare DoH, eligible captured DNS questions go to Cloudflare. Private resolver paths and selected split domains remain with the system resolver. [Personal TUN DNS and routing](docs/PERSONAL_TUN.md).
 
-MacDPI forwards to the original destination. The operating system's network and proxy policy can affect that path. MacDPI has no traffic relay, advertising, telemetry, analytics, account system or update requests.
+MacDPI forwards to the original destination by default. The optional Personal TUN TLS origin repair uses System DNS for four fixed public service names when a session starts. For a suspected address and eligible visible Discord or Roblox TLS name, it sends that name to Cloudflare over HTTPS and may dial a verified address from that response. The operating system's network and proxy policy can affect the path. MacDPI has no traffic relay, advertising, telemetry, analytics, account system or update requests.
 
 The transparent provider receives OS-supplied flow metadata and the numeric destination for eligible flows. The local proxy receives CONNECT host and port. Both handle encrypted tunnel bytes and may examine the plaintext first TLS ClientHello to select a record split. Origin TLS remains authenticated end-to-end. MacDPI does not record payloads, hostnames, destinations, passwords or browsing history. Aggregate counters and fixed error categories remain in memory. **Copy report** writes sanitized text to the clipboard only when requested.
 

@@ -45,6 +45,7 @@ type stackOptions struct {
 	wire              wirePolicy
 	encryptedExchange func(context.Context, []byte) ([]byte, error)
 	closeEncrypted    func()
+	origin            originRepair
 }
 
 type tunnelStack struct {
@@ -63,7 +64,9 @@ type tunnelStack struct {
 
 func newTunnel(parent context.Context, options stackOptions) (*tunnelStack, error) {
 	if options.dial == nil || options.wire == nil ||
-		(options.encryptedDNS && options.encryptedExchange == nil) {
+		(options.encryptedDNS && options.encryptedExchange == nil) ||
+		(len(options.origin.candidates) != 0 && (!options.encryptedDNS ||
+			options.origin.question == nil || options.origin.addresses == nil)) {
 		return nil, errors.New("tunnel configuration incomplete")
 	}
 	ctx, cancel := context.WithCancel(parent)
@@ -245,9 +248,9 @@ func (t *tunnelStack) handleTCP(request *tcp.ForwarderRequest) {
 	}
 	defer t.release(false)
 	var queue waiter.Queue
-	endpoint, err := request.CreateEndpoint(&queue)
-	request.Complete(err != nil)
-	if err != nil {
+	endpoint, endpointErr := request.CreateEndpoint(&queue)
+	request.Complete(endpointErr != nil)
+	if endpointErr != nil {
 		return
 	}
 	local := gonet.NewTCPConn(&queue, endpoint)
@@ -258,12 +261,24 @@ func (t *tunnelStack) handleTCP(request *tcp.ForwarderRequest) {
 		t.serveTCPDNS(local, destination)
 		return
 	}
+	var prefix []byte
+	if destination.Port() == 443 && t.options.origin.candidates[destination.Addr()] {
+		var err error
+		prefix, err = readFirstFlight(local)
+		if err != nil {
+			return
+		}
+		destination, err = t.resolveTLSOrigin(destination, prefix)
+		if err != nil {
+			return
+		}
+	}
 	remote, dialErr := t.options.dial(t.ctx, "tcp", destination)
 	if dialErr != nil {
 		return
 	}
 	defer remote.Close()
-	relayTCP(t.ctx, local, remote, t.tlsTransform(destination.Port()))
+	relayTCP(t.ctx, local, remote, prefix, t.tlsTransform(destination.Port()))
 }
 
 func (t *tunnelStack) handleUDP(request *udp.ForwarderRequest) bool {

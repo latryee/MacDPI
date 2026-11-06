@@ -28,4 +28,16 @@ int32_t macdpi_dns_reply(const uint8_t *query, int32_t query_length,
                          const uint8_t *response, int32_t response_length,
                          int32_t udp, int32_t encrypted, uint8_t *output, int32_t output_capacity);
 
+// A supported visible name yields a bounded A/AAAA question. Zero preserves
+// the original destination. A negative result indicates invalid policy.
+int32_t macdpi_tls_origin_query(const uint8_t *record, int32_t length, uint16_t type,
+                               const uint8_t *domains, int32_t domains_length,
+                               uint8_t *output, int32_t capacity);
+
+// Validates the encrypted response and returns concatenated public addresses
+// of the requested family, or a negative result on failure.
+int32_t macdpi_tls_origin_addresses(const uint8_t *query, int32_t query_length,
+                                   const uint8_t *response, int32_t response_length,
+                                   uint8_t *output, int32_t capacity);
+
 #endif

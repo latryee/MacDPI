@@ -2,6 +2,51 @@ import XCTest
 @testable import MacDPICore
 
 final class TUNWireBridgeTests: XCTestCase {
+    func testTLSOriginQueryRequiresAllowedNameAndHonorsSplitDNS() throws {
+        func question(_ host: String, exceptions: String = "") -> Data {
+            let record = fixture(name: host)
+            var output = Data(repeating: 0, count: 272)
+            let count = record.withUnsafeBytes { input in
+                Array(exceptions.utf8).withUnsafeBufferPointer { domains in
+                    output.withUnsafeMutableBytes { result in
+                        macdpiTLSOriginQuery(input.bindMemory(to: UInt8.self).baseAddress, Int32(record.count), 1,
+                                             domains.baseAddress, Int32(domains.count),
+                                             result.bindMemory(to: UInt8.self).baseAddress, 272)
+                    }
+                }
+            }
+            return output.prefix(max(0, Int(count)))
+        }
+        let query = question("Gateway.Discord.GG")
+        XCTAssertEqual(try DNSPacket(query, response: false).name, "gateway.discord.gg")
+        XCTAssertTrue(question("gateway.discord.gg", exceptions: "discord.gg").isEmpty)
+        XCTAssertTrue(question("notdiscord.gg").isEmpty)
+        XCTAssertTrue(question("discord.com.example.org").isEmpty)
+        XCTAssertTrue(question("intranet.local").isEmpty)
+        var response = query
+        response[2] = 0x81; response[3] = 0x80; response[7] = 1
+        response.append(contentsOf: [0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 1, 1, 1, 1])
+        func addresses(_ reply: Data) -> (Int32, Data) {
+            var output = Data(repeating: 0, count: 16)
+            let count = query.withUnsafeBytes { question in
+                reply.withUnsafeBytes { answer in
+                    output.withUnsafeMutableBytes { result in
+                        macdpiTLSOriginAddresses(question.bindMemory(to: UInt8.self).baseAddress, Int32(query.count),
+                                                 answer.bindMemory(to: UInt8.self).baseAddress, Int32(reply.count),
+                                                 result.bindMemory(to: UInt8.self).baseAddress, 16)
+                    }
+                }
+            }
+            return (count, output.prefix(max(0, Int(count))))
+        }
+        XCTAssertEqual(addresses(response).1, Data([1, 1, 1, 1]))
+        var privateReply = response
+        privateReply.replaceSubrange((privateReply.count-4)..<privateReply.count, with: [192, 168, 0, 1])
+        XCTAssertEqual(addresses(privateReply).0, -1)
+        response[1] = 1
+        XCTAssertEqual(addresses(response).0, -1)
+    }
+
     func testTLSPrefixRoundTripAndOutputBounds() {
         let hello = fixture()
         let sentinel = Data(repeating: 0xA5, count: hello.count + 9)

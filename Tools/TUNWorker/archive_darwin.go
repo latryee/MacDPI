@@ -12,6 +12,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
+	"net/netip"
 	"os"
 	"unsafe"
 
@@ -60,8 +62,44 @@ func (p swiftWire) replyDNS(query, upstream []byte, datagram, encrypted bool) []
 	return output[:n]
 }
 
+func (p swiftWire) originQuestion(record []byte, ipv4 bool) ([]byte, error) {
+	typeCode := C.uint16_t(28)
+	if ipv4 {
+		typeCode = 1
+	}
+	output := make([]byte, 272)
+	n := int(C.macdpi_tls_origin_query(borrowed(record), C.int32_t(len(record)), typeCode,
+		borrowed(p.domains), C.int32_t(len(p.domains)), borrowed(output), C.int32_t(len(output))))
+	if n < 0 || n > len(output) {
+		return nil, errors.New("invalid TLS origin policy")
+	}
+	return output[:n], nil
+}
+
+func (p swiftWire) originAddresses(query, reply []byte, ipv4 bool) []netip.Addr {
+	output := make([]byte, 16*16)
+	n := int(C.macdpi_tls_origin_addresses(borrowed(query), C.int32_t(len(query)),
+		borrowed(reply), C.int32_t(len(reply)), borrowed(output), C.int32_t(len(output))))
+	width := 16
+	if ipv4 {
+		width = 4
+	}
+	if n <= 0 || n > len(output) || n%width != 0 {
+		return nil
+	}
+	addresses := make([]netip.Addr, 0, n/width)
+	for i := 0; i < n; i += width {
+		address, ok := netip.AddrFromSlice(output[i : i+width])
+		if !ok || !publicEgress(address) {
+			return nil
+		}
+		addresses = append(addresses, address)
+	}
+	return addresses
+}
+
 //export macdpi_tun_run
-func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffset, doh C.int32_t,
+func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffset, doh, repair C.int32_t,
 	domains *C.uint8_t, domainsLen C.int32_t) C.int32_t {
 	pfd, lfd := int(packetFD), int(leaseFD)
 	if pfd < 3 || lfd < 3 || pfd == lfd {
@@ -77,7 +115,8 @@ func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffse
 	}()
 	if ipv4Index < 0 || ipv6Index < 0 || ipv4Index == 0 && ipv6Index == 0 ||
 		profile < 0 || profile > 2 || splitOffset < 1 || splitOffset > 16_000 ||
-		doh < 0 || doh > 1 || domainsLen < 0 || domainsLen > maxDNSMessage ||
+		doh < 0 || doh > 1 || (repair != 0 && (repair != 1 || doh != 1 || profile == 0)) ||
+		domainsLen < 0 || domainsLen > maxDNSMessage ||
 		domainsLen != 0 && domains == nil {
 		return 2
 	}
@@ -111,9 +150,9 @@ func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffse
 	defer leaseFile.Close()
 
 	dial := physicalDialer(int(ipv4Index), int(ipv6Index))
+	wire := swiftWire{profile: profile, offset: splitOffset, domains: C.GoBytes(unsafe.Pointer(domains), C.int(domainsLen))}
 	options := stackOptions{
-		profile: int(profile), encryptedDNS: doh == 1, dial: dial,
-		wire: swiftWire{profile: profile, offset: splitOffset, domains: C.GoBytes(unsafe.Pointer(domains), C.int(domainsLen))},
+		profile: int(profile), encryptedDNS: doh == 1, dial: dial, wire: wire,
 	}
 	if options.encryptedDNS {
 		client, closeIdle := newDoH(dial, ipv4Index != 0)
@@ -124,6 +163,13 @@ func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffse
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
+	if repair == 1 {
+		options.origin = originRepair{
+			candidates: suspectTLSOrigins(ctx, net.DefaultResolver.LookupNetIP),
+			question:   wire.originQuestion,
+			addresses:  wire.originAddresses,
+		}
+	}
 	tunnel, err := newTunnel(ctx, options)
 	if err != nil {
 		return 1

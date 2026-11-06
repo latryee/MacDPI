@@ -35,7 +35,7 @@ func isTimeout(err error) bool {
 
 // Each pump closes only the destination's write side on clean EOF. Any
 // other error or context cancellation stops both directions promptly.
-func relayTCP(ctx context.Context, local, remote net.Conn, transform func([]byte) []byte) {
+func relayTCP(ctx context.Context, local, remote net.Conn, prefix []byte, transform func([]byte) []byte) {
 	const idle = 5 * time.Minute
 	var usage = activity{start: time.Now()}
 	closeBoth := func() {
@@ -51,7 +51,7 @@ func relayTCP(ctx context.Context, local, remote net.Conn, transform func([]byte
 		}
 		close(done)
 	}()
-	if err := firstFlight(remote, local, transform, &usage); err != nil {
+	if err := firstFlight(remote, local, prefix, transform, &usage); err != nil {
 		closeBoth()
 	} else if err := copyStream(remote, local, &usage, idle); err != nil {
 		closeBoth()
@@ -111,12 +111,30 @@ func sendStream(dst net.Conn, payload []byte) error {
 // Take at most the first bounded TLS record. Delayed, incomplete, malformed,
 // or non-TLS input is forwarded byte for byte. The server->client pump is
 // already running, so a server-first stream does not wait for inspection.
-func firstFlight(dst, src net.Conn, transform func([]byte) []byte, usage *activity) error {
-	if transform == nil {
+func firstFlight(dst, src net.Conn, prefix []byte, transform func([]byte) []byte, usage *activity) error {
+	if prefix == nil && transform != nil {
+		var err error
+		prefix, err = readFirstFlight(src)
+		if err != nil {
+			return err
+		}
+	}
+	if len(prefix) == 0 {
 		return nil
 	}
+	usage.touched()
+	if transform != nil && len(prefix) > 5 && prefix[0] == 22 && prefix[1] == 3 &&
+		int(binary.BigEndian.Uint16(prefix[3:5])) == len(prefix)-5 {
+		if transformed := transform(prefix); len(transformed) > 0 {
+			prefix = transformed
+		}
+	}
+	return sendStream(dst, prefix)
+}
+
+func readFirstFlight(src net.Conn) ([]byte, error) {
 	if err := src.SetReadDeadline(time.Now().Add(firstFlightWait)); err != nil {
-		return err
+		return nil, err
 	}
 	defer src.SetReadDeadline(time.Time{})
 	header := make([]byte, 5)
@@ -124,30 +142,23 @@ func firstFlight(dst, src net.Conn, transform func([]byte) []byte, usage *activi
 	if n == 0 {
 		// Resume the ordinary byte stream after the inspection deadline.
 		// EOF or reset will still be visible to copyStream.
-		return nil
+		return header[:0], nil
 	}
-	usage.touched()
 	if err != nil || header[0] != 22 {
-		return sendStream(dst, header[:n])
+		return header[:n], nil
 	}
 	n, err = io.ReadFull(src, header[1:])
 	if err != nil || header[1] != 3 {
-		return sendStream(dst, header[:n+1])
+		return header[:n+1], nil
 	}
 	length := int(binary.BigEndian.Uint16(header[3:5]))
 	if length == 0 || length+5 > maxTLSRecord {
-		return sendStream(dst, header)
+		return header, nil
 	}
 	record := make([]byte, length+5)
 	copy(record, header)
-	n, err = io.ReadFull(src, record[5:])
-	if err != nil {
-		return sendStream(dst, record[:n+5])
-	}
-	if transformed := transform(record); len(transformed) > 0 {
-		return sendStream(dst, transformed)
-	}
-	return sendStream(dst, record)
+	n, _ = io.ReadFull(src, record[5:])
+	return record[:n+5], nil
 }
 
 func relayUDP(ctx context.Context, local, remote net.Conn, idle time.Duration) {

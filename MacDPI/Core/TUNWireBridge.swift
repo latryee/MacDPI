@@ -78,3 +78,39 @@ public func macdpiDNSReply(_ query: UnsafePointer<UInt8>?, _ queryLength: Int32,
         .flatMap { try? packet.reply(DNSPacket($0, response: true, requirePublicAddresses: encrypted == 1), udp: udp == 1) }
     return writeWireOutput(answer ?? packet.failureReply(), to: output, capacity: outputCapacity)
 }
+
+private let tlsOriginDomains = ["discord.com", "discord.gg", "discordapp.com", "discordapp.net", "discord.media",
+                                "roblox.com", "rbxcdn.com"]
+
+@_cdecl("macdpi_tls_origin_query")
+public func macdpiTLSOriginQuery(_ record: UnsafePointer<UInt8>?, _ length: Int32, _ type: UInt16,
+                                _ domains: UnsafePointer<UInt8>?, _ domainsLength: Int32,
+                                _ output: UnsafeMutablePointer<UInt8>?, _ capacity: Int32) -> Int32 {
+    guard let bytes = wireInput(record, length: length, maximum: TLSProcessor.maximumBuffered),
+          case let .clientHello(_, range?) = TLSProcessor.inspect(bytes),
+          let host = String(data: bytes.subdata(in: range), encoding: .ascii)?.lowercased(),
+          tlsOriginDomains.contains(where: { host == $0 || host.hasSuffix("." + $0) }),
+          let query = try? DNSMessage.query(host: host, type: type) else { return 0 }
+    let policy = query.withUnsafeBytes { data in
+        macdpiDNSRoute(data.bindMemory(to: UInt8.self).baseAddress, Int32(query.count), 1, domains, domainsLength)
+    }
+    guard policy == 1 else { return policy }
+    return writeWireOutput(query, to: output, capacity: capacity)
+}
+
+@_cdecl("macdpi_tls_origin_addresses")
+public func macdpiTLSOriginAddresses(_ query: UnsafePointer<UInt8>?, _ queryLength: Int32,
+                                    _ response: UnsafePointer<UInt8>?, _ responseLength: Int32,
+                                    _ output: UnsafeMutablePointer<UInt8>?, _ capacity: Int32) -> Int32 {
+    guard let bytes = wireInput(query, length: queryLength, maximum: 272),
+          let question = try? DNSPacket(bytes, response: false), question.identifier == 0,
+          question.type == 1 || question.type == 28,
+          let response = wireInput(response, length: responseLength, maximum: DNSPacket.maximumSize),
+          let packet = try? DNSPacket(response, response: true, requirePublicAddresses: true),
+          question.validates(response: packet),
+          let answer = try? DNSMessage.parse(response, host: question.name, type: question.type) else { return -1 }
+    let bits = question.type == 1 ? 32 : 128
+    let addresses = answer.addresses.compactMap { TUNCIDR("\($0)/\(bits)")?.bytes }
+    guard !addresses.isEmpty, addresses.count == answer.addresses.count else { return -1 }
+    return writeWireOutput(Data(addresses.flatMap { $0 }), to: output, capacity: capacity)
+}

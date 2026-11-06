@@ -56,9 +56,10 @@ final class PersonalTUNController {
         // Keep the numeric contract in IntegrationSupport/TUNWireBridge.h.
         let profile = configuration.profile == .compatibility ? 0 : configuration.profile == .advanced ? 2 : 1
         let child = Process(), commands = Pipe(), statuses = Pipe()
+        let repair = configuration.tunTLSOriginRepair && configuration.dnsMode == .cloudflare && profile != 0
         child.executableURL = engine
         child.arguments = [session, String(profile), String(configuration.splitOffset), configuration.dnsMode == .cloudflare ? "1" : "0",
-                           configuration.dnsBypassDomains.joined(separator: "\n")]
+                           configuration.dnsBypassDomains.joined(separator: "\n"), repair ? "1" : "0"]
         child.standardInput = commands
         child.standardOutput = statuses
         child.standardError = FileHandle.nullDevice

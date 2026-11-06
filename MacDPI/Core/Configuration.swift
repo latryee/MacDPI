@@ -26,6 +26,7 @@ public struct Configuration: Codable, Equatable, Sendable {
     public var dnsMode: DNSMode = .system
     /// Explicit split-DNS exceptions for the approved DNS provider, in addition to OS-supplied domains.
     public var dnsBypassDomains: [String] = []
+    public var tunTLSOriginRepair = false
     public var splitOffset: Int = 32
     public var maxConnections: Int = 64
     public var handshakeTimeout: TimeInterval = 10
@@ -36,7 +37,7 @@ public struct Configuration: Codable, Equatable, Sendable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case port, profile, dnsMode, dnsBypassDomains, splitOffset, maxConnections, handshakeTimeout, idleTimeout, allowLoopbackForTesting, allowedPorts
+        case port, profile, dnsMode, dnsBypassDomains, tunTLSOriginRepair, splitOffset, maxConnections, handshakeTimeout, idleTimeout, allowLoopbackForTesting, allowedPorts
     }
     public init(from decoder: Decoder) throws {
         self.init()
@@ -45,6 +46,7 @@ public struct Configuration: Codable, Equatable, Sendable {
         profile = try c.decodeIfPresent(Profile.self, forKey: .profile) ?? profile
         dnsMode = try c.decodeIfPresent(DNSMode.self, forKey: .dnsMode) ?? dnsMode
         dnsBypassDomains = try c.decodeIfPresent([String].self, forKey: .dnsBypassDomains) ?? dnsBypassDomains
+        tunTLSOriginRepair = try c.decodeIfPresent(Bool.self, forKey: .tunTLSOriginRepair) ?? tunTLSOriginRepair
         splitOffset = try c.decodeIfPresent(Int.self, forKey: .splitOffset) ?? splitOffset
         maxConnections = try c.decodeIfPresent(Int.self, forKey: .maxConnections) ?? maxConnections
         handshakeTimeout = try c.decodeIfPresent(Double.self, forKey: .handshakeTimeout) ?? handshakeTimeout

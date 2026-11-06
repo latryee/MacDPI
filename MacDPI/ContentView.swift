@@ -148,6 +148,11 @@ struct ContentView: View {
                     if model.integrationMode != .localProxy {
                         TextField("Additional split-DNS domains (comma separated)", text: Binding(get: { model.configuration.dnsBypassDomains.joined(separator: ", ") }, set: { model.configuration.dnsBypassDomains = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty } }))
                     }
+                    if model.integrationMode == .personalTUN && model.configuration.dnsMode == .cloudflare && model.configuration.profile != .compatibility {
+                        Toggle("Repair suspected Discord and Roblox DNS answers for TLS", isOn: $model.configuration.tunTLSOriginRepair)
+                        Text("When service names share a single system DNS address, MacDPI can resolve eligible visible TLS names through Cloudflare. Split DNS and UDP keep their existing paths.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Text(model.configuration.profile.detail).font(.caption).foregroundStyle(.secondary)
                     if model.integrationMode == .localProxy { TextField("Local port (1024–65535)", value: $model.configuration.port, formatter: NumberFormatter()).accessibilityIdentifier("proxy-port") }
                     if model.configuration.profile == .advanced {
