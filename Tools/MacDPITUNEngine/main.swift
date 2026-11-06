@@ -63,6 +63,8 @@ private enum Outcome: Int32 {
     case recoveryRequired = 2
     case cancelled = 3
     case failedClean = 4
+    case authorizationTimeout = 5
+    case helperConnectionFailed = 6
 
     var status: String {
         switch self {
@@ -71,6 +73,8 @@ private enum Outcome: Int32 {
         case .recoveryRequired: return "RECOVERY_REQUIRED"
         case .cancelled: return "CANCELLED"
         case .failedClean: return "FAILED_CLEAN"
+        case .authorizationTimeout: return "AUTHORIZATION_TIMEOUT"
+        case .helperConnectionFailed: return "HELPER_CONNECTION_FAILED"
         }
     }
 }
@@ -87,6 +91,7 @@ private let stop = UInt8(ascii: "S")
 private let ready = UInt8(ascii: "R")
 private let active = UInt8(ascii: "A")
 private let done = UInt8(ascii: "D")
+private let failedAfterCleanup = UInt8(ascii: "X")
 private let recovery = UInt8(ascii: "F")
 
 @discardableResult private func report(_ status: String) -> Bool {
@@ -131,7 +136,8 @@ private func awaitEvent(broker: Int32, engine: Int32, timeout: Int32) -> Event {
 }
 
 private func confirmRestoration(_ broker: Int32, then outcome: Outcome) -> Outcome {
-    guard macdpi_tun_control_send(broker, stop) == 0 else { return .recoveryRequired }
+    // The broker can send its final acknowledgement and close before our stop reaches it.
+    _ = macdpi_tun_control_send(broker, stop)
     report("RESTORING")
     let deadline = DispatchTime.now() + .seconds(20)
     while DispatchTime.now() < deadline {
@@ -141,6 +147,7 @@ private func confirmRestoration(_ broker: Int32, then outcome: Outcome) -> Outco
         guard macdpi_tun_control_receive(broker, &message, Int32((left + 999_999) / 1_000_000)) == 1 else { return .recoveryRequired }
         switch message {
         case done: return outcome == .failed ? .failedClean : outcome
+        case failedAfterCleanup: return .failedClean
         case recovery: return .recoveryRequired
         case stop, active: continue // A queued activation acknowledgement may cross Disable.
         default: return .recoveryRequired
@@ -151,8 +158,16 @@ private func confirmRestoration(_ broker: Int32, then outcome: Outcome) -> Outco
 
 private func run(_ options: Options) -> Outcome {
     let broker = options.session.withCString { macdpi_tun_broker_connect($0, STDIN_FILENO, 90_000) }
-    guard broker >= 0 else { return errno == ECANCELED ? .cancelled : .failed }
+    guard broker >= 0 else {
+        switch errno {
+        case ECANCELED: return .cancelled
+        case ETIMEDOUT: return .authorizationTimeout
+        default: return .helperConnectionFailed
+        }
+    }
     defer { close(broker) }
+    // The helper may already be opening the interface before it sends the packet descriptor.
+    let parentListening = report("CONFIGURING")
 
     var packet: Int32 = -1
     var ipv4: UInt32 = 0
@@ -166,11 +181,10 @@ private func run(_ options: Options) -> Outcome {
         close(packet)
         return confirmRestoration(broker, then: .failed)
     }
-    guard report("CONFIGURING") else {
+    guard parentListening else {
         close(packet)
         return confirmRestoration(broker, then: .disabled)
     }
-
     var pair: [Int32] = [-1, -1]
     guard macdpi_tun_lease_pair(&pair) == 0, pair[0] >= 3, pair[1] >= 3 else {
         for fd in pair where fd >= 3 { close(fd) }
@@ -192,37 +206,34 @@ private func run(_ options: Options) -> Outcome {
         }
     }
 
-    func stopEngine(_ outcome: Outcome, brokerCanConfirm: Bool = true) -> Outcome {
+    func stopEngine(_ outcome: Outcome, brokerOutcome: Outcome? = nil) -> Outcome {
         _ = macdpi_tun_control_send(controllerLease, stop)
         close(controllerLease)
         // The engine owns the packet fd. Wait for its return before telling
         // the broker to detach. If it hangs, process exit closes descriptors
         // and the broker independently sees EOF and rolls back.
-        guard engineDone.wait(timeout: .now() + .seconds(5)) == .success, brokerCanConfirm else { return .recoveryRequired }
-        return confirmRestoration(broker, then: outcome)
+        guard engineDone.wait(timeout: .now() + .seconds(5)) == .success else { return .recoveryRequired }
+        return brokerOutcome ?? confirmRestoration(broker, then: outcome)
     }
 
-    switch awaitEvent(broker: broker, engine: controllerLease, timeout: 12_000) {
-    case .engine(ready):
-        guard macdpi_tun_control_send(broker, ready) == 0 else { return stopEngine(.failed, brokerCanConfirm: false) }
-    case .parentStop, .broker(stop): return stopEngine(.disabled)
-    case .broker(nil), .broker(recovery): return stopEngine(.failed, brokerCanConfirm: false)
-    default: return stopEngine(.failed)
+    func stopForEvent(_ event: Event) -> Outcome {
+        switch event {
+        case .parentStop, .broker(stop): return stopEngine(.disabled)
+        case .broker(done): return stopEngine(.disabled, brokerOutcome: .disabled)
+        case .broker(failedAfterCleanup): return stopEngine(.failed, brokerOutcome: .failedClean)
+        case .broker(nil), .broker(recovery): return stopEngine(.failed, brokerOutcome: .recoveryRequired)
+        default: return stopEngine(.failed)
+        }
     }
 
-    switch awaitEvent(broker: broker, engine: controllerLease, timeout: 20_000) {
-    case .broker(active):
-        guard report("ACTIVE") else { return stopEngine(.disabled) }
-    case .parentStop, .broker(stop): return stopEngine(.disabled)
-    case .broker(nil), .broker(recovery): return stopEngine(.failed, brokerCanConfirm: false)
-    default: return stopEngine(.failed)
-    }
+    let readyEvent = awaitEvent(broker: broker, engine: controllerLease, timeout: 12_000)
+    guard case .engine(ready) = readyEvent else { return stopForEvent(readyEvent) }
+    guard macdpi_tun_control_send(broker, ready) == 0 else { return stopEngine(.failed) }
 
-    switch awaitEvent(broker: broker, engine: controllerLease, timeout: -1) {
-    case .parentStop, .broker(stop): return stopEngine(.disabled)
-    case .broker(nil), .broker(recovery): return stopEngine(.failed, brokerCanConfirm: false)
-    default: return stopEngine(.failed)
-    }
+    let activeEvent = awaitEvent(broker: broker, engine: controllerLease, timeout: 20_000)
+    guard case .broker(active) = activeEvent else { return stopForEvent(activeEvent) }
+    guard report("ACTIVE") else { return stopEngine(.disabled) }
+    return stopForEvent(awaitEvent(broker: broker, engine: controllerLease, timeout: -1))
 }
 
 signal(SIGPIPE, SIG_IGN)

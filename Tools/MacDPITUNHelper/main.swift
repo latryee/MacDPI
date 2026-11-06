@@ -42,6 +42,7 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
     defer { signals.forEach { $0.cancel() } }
     var drained = false
     var transferred = false
+    var stopRequested = false
     var lease: TUNRouteLease?
     var final: UInt8 = 70 // F means the broker could not verify cleanup.
     defer { _ = macdpi_tun_control_send(peer, final) }
@@ -50,6 +51,7 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
         guard !interrupt.isStopped, !drained else { return false }
         var byte: UInt8 = 0
         let result = recv(peer, &byte, 1, MSG_PEEK | MSG_DONTWAIT)
+        if result == 1 && byte == UInt8(ascii: "S") { stopRequested = true }
         return result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)
     }
 
@@ -61,7 +63,7 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
         drained = (result == 1 && byte == 83) || result == 0
     }
 
-    func restore() throws {
+    func restore(afterFailure: Bool = false) throws {
         if let lease, backend.owns(lease), transaction.phase == .disabled {
             try backend.release(lease)
             let observed = try backend.snapshot(excluding: nil)
@@ -72,7 +74,8 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
         } else {
             try transaction.disable()
         }
-        final = 68 // D is sent only after the broker has checked that owned state is gone.
+        // Either acknowledgement requires the broker to verify that owned state is gone.
+        final = afterFailure ? UInt8(ascii: "X") : UInt8(ascii: "D")
     }
 
     do {
@@ -95,14 +98,18 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
         while !interrupt.isStopped {
             let result = macdpi_tun_control_receive(peer, &byte, 4_000)
             if result == 0 || (result == 1 && byte == 83) { drained = true; break }
-            guard result < 0 && errno == ETIMEDOUT else { break }
+            guard result < 0 && errno == ETIMEDOUT else { throw TUNRouteError.engineNotReady }
             try transaction.checkHealth(engineIsReady: engineIsReady)
         }
     } catch {
+        if stopRequested || interrupt.isStopped {
+            try restore()
+            return
+        }
         // No payloads, addresses, or configuration content are logged by the broker.
         let detail = (error as? TUNRouteError).map(String.init(describing:)) ?? "operating-system error"
         fputs("MacDPI TUN stopped: \(detail).\n", stderr)
-        try restore()
+        try restore(afterFailure: true)
         throw error
     }
     try restore()

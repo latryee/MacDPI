@@ -25,6 +25,7 @@ final class PersonalTUNController {
     private var pending = Data()
     private var statusVerified = false
     private var mayHaveRoutes = false
+    private var wasActive = false
     private var completions: [(Bool) -> Void] = []
     private var stopTimeout: Task<Void, Never>?
     private let allowed: Bool
@@ -63,7 +64,7 @@ final class PersonalTUNController {
         child.standardError = FileHandle.nullDevice
         process = child; input = commands; output = statuses
         pending.removeAll(keepingCapacity: true)
-        statusVerified = false; mayHaveRoutes = false
+        statusVerified = false; mayHaveRoutes = false; wasActive = false
         publish(.starting, "Starting the unprivileged traffic engine.")
         // A single serial reader preserves status ordering through EOF. The child reports only
         // bounded fixed vocabulary and closes this pipe on every exit.
@@ -122,13 +123,22 @@ final class PersonalTUNController {
                 mayHaveRoutes = true; authorizationCommand = nil
                 if phase != .stopping { publish(.configuring, "The engine is starting and the helper is checking routing.") }
             case "ACTIVE":
-                mayHaveRoutes = true; authorizationCommand = nil
+                mayHaveRoutes = true; wasActive = true; authorizationCommand = nil
                 if phase != .stopping { publish(.active, "The engine is running and the helper verified the installed TUN routes.") }
             case "RESTORING": publish(.restoring, "Waiting for macOS to detach the tunnel and release its routes.")
             case "DISABLED": statusVerified = true; publish(.disabled, "The helper verified that its interface and routes are gone.")
             case "CANCELLED": statusVerified = true; publish(.disabled, "The authorization request was cancelled before routing started.")
-            case "FAILED": statusVerified = !mayHaveRoutes; publish(.failed, "The tunnel could not start or the network changed.")
-            case "FAILED_CLEAN": statusVerified = true; publish(.failed, "The tunnel could not continue. The helper verified that its routes are gone.")
+            case "AUTHORIZATION_TIMEOUT":
+                authorizationCommand = nil; statusVerified = true
+                publish(.failed, "No authorized helper connected within 90 seconds. Press Enable and run the new command in Terminal.")
+            case "HELPER_CONNECTION_FAILED":
+                authorizationCommand = nil; statusVerified = true
+                publish(.failed, "The traffic engine could not connect to the session helper. Check Terminal for the helper error and retry.")
+            case "FAILED": statusVerified = !mayHaveRoutes; publish(.failed, "The traffic engine could not start. Review the selected DNS settings and retry.")
+            case "FAILED_CLEAN":
+                statusVerified = true
+                let failure = wasActive ? "The helper stopped the active tunnel." : "The helper could not finish configuring the tunnel."
+                publish(.failed, failure + " Route cleanup was verified. See Terminal for details.")
             case "RECOVERY_REQUIRED": statusVerified = true; publish(.recovery, "Route cleanup could not be verified. Run the recovery check.")
             default: stop(); return
             }

@@ -138,7 +138,8 @@ def trial(check_discord):
     status = StatusReader(engine.stdout)
     broker = None
     clean = False
-    terminal = {'FAILED', 'FAILED_CLEAN', 'RECOVERY_REQUIRED', 'DISABLED', 'CANCELLED'}
+    clean_states = {'DISABLED', 'FAILED_CLEAN', 'CANCELLED', 'AUTHORIZATION_TIMEOUT', 'HELPER_CONNECTION_FAILED'}
+    terminal = clean_states | {'FAILED', 'RECOVERY_REQUIRED'}
     phase = None
     try:
         broker = subprocess.Popen(['/usr/bin/sudo', '-n', '--', HELPERS / 'MacDPITUNHelper', 'run', session])
@@ -157,7 +158,7 @@ def trial(check_discord):
         try:
             if phase not in terminal:
                 phase = status.wait(terminal, 28)
-            clean = phase in {'DISABLED', 'FAILED_CLEAN'}
+            clean = phase in clean_states
         except (RuntimeError, TimeoutError) as error:
             print(error, flush=True)
         finally:

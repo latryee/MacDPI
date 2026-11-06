@@ -18,7 +18,7 @@ The broker asks the engine to release its duplicate and closes its own descripto
 
 Darwin's `RTM_DELETE` uses the destination, mask and route scope. A lookup followed by deletion is subject to races with another process changing a route at the same key. MacDPI therefore uses descriptor ownership to relinquish the interface and does not issue route deletions. Recovery after broker death inspects the journal and observed state. A still-present or reused interface index is ambiguous and requires investigation. The recovery audit cannot adopt an interface by its name or remove an unrelated route. [Darwin route delete implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/net/route.c).
 
-The route transaction can react to engine loss or changed network state when the broker calls its health check. IPv4 or IPv6 default changes, a changed primary service, conflicting routes, DNS and proxy changes, and unexpected disappearance of an installed route are reasons to release the session. Changes from another app remain in place.
+The route transaction can react to engine loss or changed network state when the broker calls its health check. IPv4 or IPv6 default changes, a changed primary service, conflicting routes, DNS and proxy changes, and unexpected disappearance of an installed route are reasons to release the session. Changes from another app remain in place. When the broker confirms cleanup after a startup or health failure, the app shows a failed session with verified cleanup. A user-requested stop with the same cleanup proof shows Disabled. If the connection drops before the broker can confirm cleanup, the app shows Recovery required.
 
 ## Verification boundaries
 

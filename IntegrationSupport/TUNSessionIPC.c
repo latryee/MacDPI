@@ -349,7 +349,7 @@ int macdpi_tun_broker_receive_fd(int peer, int *packet_fd, uint32_t *ipv4_index,
     }
     if (descriptor_count == 0 && n == 1 && !(message.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
         const uint8_t marker = ((const uint8_t *)fields)[0];
-        if (marker == 'D') return fail(ECANCELED); // Rejected before handing over the interface.
+        if (marker == 'D' || marker == 'X') return fail(ECANCELED); // Verified cleanup before descriptor transfer.
         if (marker == 'F') return fail(ESTALE);   // The broker could not verify recovery.
     }
     if (descriptor_count != 1 || received < 3 || (message.msg_flags & (MSG_TRUNC | MSG_CTRUNC)) != 0) {

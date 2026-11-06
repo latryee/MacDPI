@@ -40,6 +40,22 @@ static void test_reject_missing_descriptor(void) {
     close(lease[0]); close(lease[1]);
 }
 
+static void test_broker_failure_acknowledgements(void) {
+    const uint8_t markers[] = {'D', 'X', 'F'};
+    const int expected[] = {ECANCELED, ECANCELED, ESTALE};
+    for (size_t index = 0; index < sizeof(markers); ++index) {
+        int lease[2];
+        assert(macdpi_tun_lease_pair(lease) == 0);
+        assert(macdpi_tun_control_send(lease[0], markers[index]) == 0);
+        assert(close(lease[0]) == 0);
+        uint32_t v4 = 0, v6 = 0;
+        int fd = -1;
+        assert(macdpi_tun_broker_receive_fd(lease[1], &fd, &v4, &v6, 500) == -1);
+        assert(errno == expected[index] && fd == -1);
+        close(lease[1]);
+    }
+}
+
 static void test_audit_identity(const char *executable) {
     CFURLRef path = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8 *)executable, (CFIndex)strlen(executable), false);
     assert(path != NULL);
@@ -72,6 +88,7 @@ int main(int argc, const char **argv) {
     assert(macdpi_tun_broker_listen("12a45678-1234-1234-1234-123456789012", getuid()) == -1 && errno == EACCES);
     test_descriptor_and_stop();
     test_reject_missing_descriptor();
+    test_broker_failure_acknowledgements();
     test_audit_identity(argv[0]);
     puts("PASS: unprivileged TUN IPC descriptor handoff, stop, timeout, EOF, audit token, and code hash");
     return 0;
