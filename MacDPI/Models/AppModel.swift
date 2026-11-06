@@ -25,6 +25,19 @@ enum IntegrationConsent: String, Identifiable {
 }
 
 @MainActor
+protocol PersonalTUNControlling: AnyObject {
+    var phase: PersonalTUNPhase { get }
+    var detail: String { get }
+    var authorizationCommand: String? { get }
+    var recoveryCommand: String? { get }
+    var changed: (() -> Void)? { get set }
+    func start(_ configuration: Configuration)
+    func stop(completion: ((Bool) -> Void)?)
+}
+
+extension PersonalTUNController: PersonalTUNControlling {}
+
+@MainActor
 final class AppModel: ObservableObject {
     nonisolated static var isIsolatedLaunch: Bool {
         ProcessInfo.processInfo.arguments.contains("--ui-testing")
@@ -39,14 +52,18 @@ final class AppModel: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var systemProxyLinked = false
     @Published private(set) var integrationStatus = IntegrationStatus()
+    @Published private(set) var personalTUNPhase: PersonalTUNPhase = .disabled
     @Published var pendingConsent: IntegrationConsent?
     @Published private var selectedIntegrationMode: TrafficIntegrationMode
     var integrationMode: TrafficIntegrationMode {
         get { selectedIntegrationMode }
         set {
             guard newValue != selectedIntegrationMode else { return }
-            guard !busy, snapshot.state != .enabled, !integrationStatus.requiresStop else {
+            guard !busy, !isEnabled, !integrationStatus.requiresStop, personalTUNPhase != .recovery else {
                 error = "Disable MacDPI before changing the integration mode."; return
+            }
+            guard availableIntegrationModes.contains(newValue) else {
+                error = "This build does not include Personal TUN."; return
             }
             selectedIntegrationMode = newValue
             pendingConsent = nil; error = nil
@@ -59,27 +76,65 @@ final class AppModel: ObservableObject {
     private let requiresLocalAuthentication: Bool
     private let store: ConfigurationStoring
     private let integration: IntegrationLifecycle
+    private let personalTUN: PersonalTUNControlling
+    private let personalTUNAvailable: Bool
     private var refresh: Task<Void, Never>?
     private var path: NWPathMonitor?
     private var operation = UUID()
     private var tracksIntegrationDiagnostics = false
-    var isEnabled: Bool { integrationMode == .transparent ? integrationStatus.isEnabled : snapshot.state == .enabled }
-    var statusTitle: String { integrationMode == .transparent ? integrationStatus.phase.title : (isEnabled ? "Local proxy ready" : snapshot.state.rawValue.capitalized) }
+    private var tunActiveSince: Date?
+    var availableIntegrationModes: [TrafficIntegrationMode] {
+        personalTUNAvailable ? [.personalTUN, .localProxy] : [.localProxy, .transparent]
+    }
+    var isEnabled: Bool {
+        switch integrationMode {
+        case .personalTUN: return personalTUNPhase == .active
+        case .transparent: return integrationStatus.isEnabled
+        case .localProxy: return snapshot.state == .enabled
+        }
+    }
+    var canToggleEngine: Bool {
+        integrationMode != .personalTUN || ![.stopping, .restoring].contains(personalTUNPhase)
+    }
+    var engineButtonTitle: String {
+        if integrationMode == .personalTUN && [.stopping, .restoring].contains(personalTUNPhase) { return "Stopping" }
+        return busy ? "Cancel" : isEnabled ? "Disable" : "Enable"
+    }
+    var authorizationCommand: String? { integrationMode == .personalTUN ? personalTUN.authorizationCommand : nil }
+    var recoveryCommand: String? {
+        integrationMode == .personalTUN && personalTUNPhase == .recovery ? personalTUN.recoveryCommand : nil
+    }
+    var statusTitle: String {
+        switch integrationMode {
+        case .personalTUN: return personalTUNPhase.rawValue
+        case .transparent: return integrationStatus.phase.title
+        case .localProxy: return isEnabled ? "Local proxy ready" : snapshot.state.rawValue.capitalized
+        }
+    }
     var statusDetail: String {
-        integrationMode == .transparent ? integrationStatus.detail : (isEnabled
-            ? "Listening on 127.0.0.1:\(configuration.port). Only explicitly configured proxy clients use this listener."
-            : "Enable the optional local listener for proxy diagnostics.")
+        switch integrationMode {
+        case .personalTUN: return personalTUN.detail
+        case .transparent: return integrationStatus.detail
+        case .localProxy:
+            return isEnabled
+                ? "Listening on 127.0.0.1:\(configuration.port). Only explicitly configured proxy clients use this listener."
+                : "Enable the optional local listener for proxy diagnostics."
+        }
     }
 
     init(engine: EngineControlling? = nil, store: ConfigurationStoring? = nil,
-         integrationDriver: IntegrationDriving? = nil, mode: TrafficIntegrationMode? = nil) {
+         integrationDriver: IntegrationDriving? = nil, mode: TrafficIntegrationMode? = nil,
+         personalTUNController: PersonalTUNControlling? = nil) {
         let arguments = ProcessInfo.processInfo.arguments
         let needsCredential = engine == nil && !Self.isIsolatedLaunch
         let token = needsCredential ? Self.makeLocalProxyToken() : nil
         localProxyToken = token; requiresLocalAuthentication = needsCredential
         self.engine = engine ?? ProxyEngine(authenticationToken: token); self.store = store ?? PreferencesStore()
-        selectedIntegrationMode = mode ?? (engine != nil || Self.isIsolatedLaunch ? .localProxy : .transparent)
         let isolated = engine != nil || Self.isIsolatedLaunch
+        let tunBundled = !isolated && PersonalTUNController.bundled
+        personalTUNAvailable = tunBundled || personalTUNController != nil
+        personalTUN = personalTUNController ?? PersonalTUNController(allowed: tunBundled)
+        selectedIntegrationMode = mode ?? (isolated ? .localProxy : tunBundled ? .personalTUN : .transparent)
         integration = IntegrationLifecycle(driver: integrationDriver ?? (isolated ? IsolatedIntegrationDriver() : TransparentIntegrationController(dns: SystemDNSProxyController())))
         if let saved = self.store.load(),
            let validated = try? saved.validated(), !validated.allowLoopbackForTesting, validated.allowedPorts == [443] {
@@ -101,6 +156,7 @@ final class AppModel: ObservableObject {
             if status.isEnabled { self.startPathMonitor() }
             else if !status.phase.isBusy { self.path?.cancel(); self.path = nil; self.reachable = nil }
         }
+        personalTUN.changed = { [weak self] in self?.personalTUNDidChange() }
         // Test hosts, UI automation and injected local engines never reach OS integration adapters.
         if integrationMode == .transparent { integration.refresh() }
     }
@@ -110,13 +166,17 @@ final class AppModel: ObservableObject {
         return Data(bytes).base64EncodedString()
     }
     func toggle() {
-        let changing = integrationMode == .transparent
-            ? integrationStatus.phase.isBusy
-            : snapshot.state == .starting
+        guard canToggleEngine else { return }
+        let changing: Bool
+        switch integrationMode {
+        case .personalTUN: changing = personalTUNPhase.busy
+        case .transparent: changing = integrationStatus.phase.isBusy
+        case .localProxy: changing = snapshot.state == .starting
+        }
         isEnabled || changing ? disable() : enable()
     }
     func setupIntegration() {
-        guard !busy, !isEnabled else { return }
+        guard !busy, !isEnabled, availableIntegrationModes.contains(.transparent) else { return }
         integrationMode = .transparent
         pendingConsent = .enable
     }
@@ -140,11 +200,19 @@ final class AppModel: ObservableObject {
     }
     func emergencyStop() {
         pendingConsent = nil
-        if integrationMode == .localProxy { disable() }
+        if integrationMode != .transparent { disable() }
         if integrationMode == .transparent || integrationStatus.requiresStop { integration.disable() }
     }
     func enable() {
         guard !busy else { return }
+        if integrationMode == .personalTUN {
+            do { _ = try configuration.validated() } catch { self.error = error.localizedDescription; return }
+            error = nil
+            snapshot = Snapshot()
+            store.save(configuration)
+            personalTUN.start(configuration)
+            return
+        }
         if integrationMode == .transparent {
             do { _ = try configuration.validated() } catch { self.error = error.localizedDescription; return }
             if store.loadIntegrationConsent() == IntegrationConsentScope(configuration: configuration) { enableAuthorizedIntegration() }
@@ -170,6 +238,7 @@ final class AppModel: ObservableObject {
     }
     func disable() {
         pendingConsent = nil
+        if integrationMode == .personalTUN { personalTUN.stop(completion: nil); return }
         if integrationMode == .transparent { integration.disable(); return }
         browserWindow?.close(); browserWindow = nil
         operation = UUID(); let current = operation
@@ -184,6 +253,19 @@ final class AppModel: ObservableObject {
                 }
             }
         }
+    }
+    private func personalTUNDidChange() {
+        personalTUNPhase = personalTUN.phase
+        guard integrationMode == .personalTUN else { return }
+        busy = personalTUNPhase.busy
+        if personalTUNPhase == .active {
+            if tunActiveSince == nil { tunActiveSince = Date() }
+            startPathMonitor()
+        } else if !busy {
+            tunActiveSince = nil
+            path?.cancel(); path = nil; reachable = nil
+        }
+        updateTUNDiagnostics()
     }
     private func startRefresh() {
         refresh?.cancel()
@@ -217,6 +299,13 @@ final class AppModel: ObservableObject {
         monitor.start(queue: DispatchQueue(label: "io.macdpi.reachability"))
     }
     func checkReadiness() {
+        if integrationMode == .personalTUN {
+            do {
+                _ = try configuration.validated()
+                updateTUNDiagnostics()
+            } catch { diagnostics = error.localizedDescription }
+            return
+        }
         if integrationMode == .transparent {
             integration.refresh()
             tracksIntegrationDiagnostics = true
@@ -233,9 +322,20 @@ final class AppModel: ObservableObject {
     private func updateIntegrationDiagnostics() {
         diagnostics = "Mode: Mac-wide integration\nStatus: \(integrationStatus.phase.title)\n\(integrationStatus.detail)\nExtension: \(integrationStatus.observation.extensionState.rawValue); OS connection: \(integrationStatus.observation.connection.rawValue).\n\(integrationStatus.observation.dns.detail)\nSupported public TCP/UDP handling is implemented in the prepared provider. NetworkExtension exclusions apply. UDP/QUIC forwarding does not imply DPI bypass. Discord desktop/voice and Roblox gameplay remain unverified.\nAfter macOS restart, Enable is manual; no on-demand rules are installed."
     }
+    private func updateTUNDiagnostics() {
+        let elapsed = tunActiveSince.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds" } ?? "unavailable"
+        diagnostics = "Personal TUN · \(statusTitle)\n\(statusDetail)\nDNS option · \(configuration.dnsMode.title)\nSession duration · \(elapsed)\nAggregate traffic and resource measurements are unavailable here.\nDiscord voice and Roblox gameplay require an approved live test."
+    }
     func refreshRoutingStatus() {
         if integrationMode == .transparent { integration.refresh() }
-        else { systemProxyLinked = ProxyRoutingStatus.systemHTTPSProxyMatches(port: configuration.port) }
+        else if integrationMode == .localProxy { systemProxyLinked = ProxyRoutingStatus.systemHTTPSProxyMatches(port: configuration.port) }
+    }
+    func copyTUNAuthorizationCommand() { copyCommand(authorizationCommand) }
+    func copyTUNRecoveryCommand() { copyCommand(recoveryCommand) }
+    private func copyCommand(_ command: String?) {
+        guard let command else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(command, forType: .string)
     }
     func copyProxyAddress() {
         NSPasteboard.general.clearContents()
@@ -262,7 +362,10 @@ final class AppModel: ObservableObject {
         window.center(); window.makeKeyAndOrderFront(nil); browserWindow = window
     }
     func copyDiagnostics() {
-        let text = "MacDPI \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")\n\(diagnostics)\nActive: \(snapshot.activeConnections), transformed: \(snapshot.transformed), failures: \(snapshot.failures)\n\(snapshot.lastError ?? "No recorded error")"
+        var text = "MacDPI \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")\n\(diagnostics)"
+        if integrationMode != .personalTUN {
+            text += "\nActive: \(snapshot.activeConnections), transformed: \(snapshot.transformed), failures: \(snapshot.failures)\n\(snapshot.lastError ?? "No recorded error")"
+        }
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string)
     }
     var loginEnabled: Bool {
@@ -279,6 +382,17 @@ final class AppModel: ObservableObject {
     }
     func terminate(completion: @escaping (Bool) -> Void) {
         browserWindow?.close(); browserWindow = nil; operation = UUID(); refresh?.cancel(); path?.cancel()
+        if integrationMode == .personalTUN {
+            personalTUN.stop { [weak self] stopped in
+                guard let self else { completion(true); return }
+                if !stopped {
+                    self.error = "Route restoration is unverified. Run the recovery command shown in Personal TUN."
+                }
+                if self.integrationStatus.requiresStop { self.finishIntegrationTermination(completion: completion) }
+                else { completion(true) }
+            }
+            return
+        }
         if integrationMode == .localProxy {
             engine.stop { [weak self] in
                 DispatchQueue.main.async {
@@ -376,12 +490,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.item(withTag: 100)?.title = model?.statusTitle ?? "MacDPI"
-        menu.item(withTag: 101)?.title = model?.busy == true ? "Cancel operation" : model?.isEnabled == true ? "Disable MacDPI" : "Enable MacDPI"
+        menu.item(withTag: 101)?.title = "\(model?.engineButtonTitle ?? "Enable") MacDPI"
+        menu.item(withTag: 101)?.isEnabled = model?.canToggleEngine == true
     }
     @objc private func emergencyStop() { model?.emergencyStop() }
     @objc private func toggleEngine() {
         model?.toggle()
-        if model?.pendingConsent != nil { showWindow() }
+        if model?.pendingConsent != nil || model?.authorizationCommand != nil || model?.recoveryCommand != nil { showWindow() }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let model else { return .terminateNow }

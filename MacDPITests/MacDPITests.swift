@@ -18,7 +18,71 @@ private final class FakeEngine: EngineControlling {
     func snapshot(_ completion: @escaping (Snapshot) -> Void) { completion(value) }
 }
 
+@MainActor
+private final class FakePersonalTUN: PersonalTUNControlling {
+    var phase: PersonalTUNPhase = .disabled
+    var detail = "Fixture status"
+    var authorizationCommand: String? { phase == .authorization ? "fixture authorization" : nil }
+    let recoveryCommand: String? = "fixture recovery"
+    var changed: (() -> Void)?
+    var configuration: Configuration?
+    var stopCompletion: ((Bool) -> Void)?
+
+    func setPhase(_ next: PersonalTUNPhase) {
+        phase = next
+        changed?()
+    }
+
+    func start(_ configuration: Configuration) {
+        self.configuration = configuration
+        setPhase(.authorization)
+    }
+
+    func stop(completion: ((Bool) -> Void)?) {
+        stopCompletion = completion
+        setPhase(.stopping)
+    }
+}
+
 final class MacDPITests: XCTestCase {
+    @MainActor
+    func testPersonalTunnelUsesVerifiedStateAndKeepsProxyIdle() {
+        let tun = FakePersonalTUN(), proxy = FakeEngine()
+        let model = AppModel(engine: proxy, store: MemoryConfigurationStore(), mode: .personalTUN, personalTUNController: tun)
+        model.configuration.dnsMode = .cloudflare
+        model.enable()
+        XCTAssertEqual(model.authorizationCommand, "fixture authorization")
+        XCTAssertEqual(tun.configuration?.dnsMode, .cloudflare)
+        XCTAssertFalse(model.isEnabled)
+        tun.setPhase(.configuring)
+        XCTAssertFalse(model.isEnabled)
+        tun.setPhase(.active)
+        XCTAssertTrue(model.isEnabled)
+        XCTAssertEqual(proxy.starts, 0)
+        model.integrationMode = .localProxy
+        XCTAssertEqual(model.integrationMode, .personalTUN)
+        model.disable()
+        tun.setPhase(.restoring)
+        XCTAssertFalse(model.canToggleEngine)
+        tun.setPhase(.recovery)
+        XCTAssertEqual(model.recoveryCommand, "fixture recovery")
+        XCTAssertFalse(model.isEnabled)
+    }
+
+    @MainActor
+    func testPersonalTunnelQuitWaitsForShutdownAttempt() {
+        let tun = FakePersonalTUN()
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), mode: .personalTUN, personalTUNController: tun)
+        model.enable()
+        tun.setPhase(.active)
+        var quit: Bool?
+        model.terminate { quit = $0 }
+        XCTAssertNil(quit)
+        tun.setPhase(.recovery)
+        tun.stopCompletion?(false)
+        XCTAssertEqual(quit, true)
+        XCTAssertNotNil(model.error)
+    }
     @MainActor
     func testUIStateAndShutdown() async throws {
         let engine = FakeEngine()

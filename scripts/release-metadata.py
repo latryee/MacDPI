@@ -21,6 +21,7 @@ EXTENSION_ID = HOST_ID + '.TransparentProxy'
 DNS_ID = HOST_ID + '.DNSProxy'
 GROUP_SUFFIX = HOST_ID + '.shared'
 CAPABILITIES = {'app-proxy-provider-systemextension', 'dns-proxy-systemextension'}
+TUN_BINARIES = {'MacDPITUNHelper', 'MacDPITUNEngine'}
 COMPONENTS = {
     'host': {'identifier': HOST_ID, 'executable': 'MacDPI', 'capabilities': CAPABILITIES},
     'extension': {'identifier': EXTENSION_ID, 'executable': 'MacDPITransparentProxy',
@@ -38,6 +39,10 @@ BASE = {'com.apple.security.app-sandbox': True,
 def build_context(environment=None):
     env = os.environ if environment is None else environment
     identity = env.get('SIGN_IDENTITY', '').strip()
+    if env.get('MACDPI_PERSONAL_TUN') == '1':
+        if identity and identity != '-':
+            raise ValueError('The personal build is a separate ad hoc configuration.')
+        return {'mode': 'local-personal', 'identity': '-', 'team': None, 'prefix': 'UNPROVISIONED.'}
     if not identity or identity == '-':
         return {'mode': 'local-review', 'identity': '-', 'team': None, 'prefix': 'UNPROVISIONED.'}
     team = env.get('MACDPI_TEAM_ID', '')
@@ -104,6 +109,12 @@ def validate_build_root(value):
 
 
 def entitlements(kind, context):
+    if context['mode'] == 'local-personal':
+        if kind != 'host':
+            raise ValueError('Personal builds do not contain Network Extension providers.')
+        # Personal apps require an unprivileged Unix socket and child process outside
+        # App Sandbox. This grants no special system or networking entitlement.
+        return {}
     result = dict(BASE)
     if kind != 'host' or context['mode'] == 'developer-id':
         result['com.apple.developer.networking.networkextension'] = sorted(COMPONENTS[kind]['capabilities'])
@@ -140,6 +151,8 @@ def prepare(kind, bundle, entitlement_path, context):
             'NSSystemExtensionUsageDescription': 'MacDPI uses an approved local networking extension to handle supported outbound traffic. No remote VPN or TLS certificate installation is used.',
         }
     info['MacDPIIntegrationBuild'] = context['mode']
+    if kind == 'host' and context['mode'] == 'local-personal':
+        info['MacDPIPersonalTUN'] = True
     (bundle / 'Contents').mkdir(parents=True, exist_ok=True)
     (bundle / 'Contents/Info.plist').write_bytes(plistlib.dumps(info, sort_keys=False))
     entitlement_path.parent.mkdir(parents=True, exist_ok=True)

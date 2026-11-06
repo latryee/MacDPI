@@ -26,7 +26,7 @@ def read_entitlements(bundle, architecture='arm64'):
     result = subprocess.run(['codesign', '-d', '--architecture', architecture, '--entitlements', '-', '--xml', str(bundle)], capture_output=True)
     if result.returncode:
         result = subprocess.run(['codesign', '-d', '--architecture', architecture, '--entitlements', ':-', str(bundle)], capture_output=True, check=True)
-    return plistlib.loads(result.stdout)
+    return plistlib.loads(result.stdout) if result.stdout else {}
 
 
 def slices(binary):
@@ -48,10 +48,31 @@ def verify(app, require_production=False):
     require(info['LSMinimumSystemVersion'] == '12.0', 'Incorrect minimum macOS version.')
     require(info.get('NSSystemExtensionUsageDescription'), 'Host purpose string is missing.')
     mode = info.get('MacDPIIntegrationBuild')
-    require(mode in {'local-review', 'developer-id'}, 'Build capability marker is missing or unresolved.')
+    require(mode in {'local-review', 'local-personal', 'developer-id'}, 'Build capability marker is missing or unresolved.')
     if require_production:
-        require(mode == 'developer-id', 'A local review build is not an activatable distribution.')
+        require(mode == 'developer-id', 'Production distribution requires a Developer ID build.')
     extension_root = app / 'Contents/Library/SystemExtensions'
+    if mode == 'local-personal':
+        require(info.get('MacDPIPersonalTUN') is True, 'Personal TUN marker is missing.')
+        require(not extension_root.exists(), 'Personal builds cannot contain Network Extension providers.')
+        require(not (app / 'Contents/embedded.provisionprofile').exists(), 'Personal builds cannot contain provisioning profiles.')
+        helper_root = app / 'Contents/Helpers'
+        require({p.name for p in helper_root.iterdir()} == METADATA.TUN_BINARIES, 'Incorrect personal TUN components.')
+        for binary in [app / 'Contents/MacOS/MacDPI', *(helper_root / name for name in sorted(METADATA.TUN_BINARIES))]:
+            require(binary.is_file() and not binary.is_symlink(), 'Invalid personal TUN executable.')
+            require(not binary.stat().st_mode & (stat.S_ISUID | stat.S_ISGID), 'Unexpected elevated executable mode.')
+            slices(binary)
+            command(['codesign', '--verify', '--strict', '--all-architectures', str(binary if binary.parent == helper_root else app)])
+            for architecture in ('arm64', 'x86_64'):
+                target = binary if binary.parent == helper_root else app
+                require(not read_entitlements(target, architecture), 'Personal builds cannot claim special entitlements.')
+                require('Signature=adhoc' in command(['codesign', '-dvv', '--architecture', architecture, str(target)]).stderr,
+                        'Personal builds must be explicitly ad hoc signed.')
+        command(['codesign', '--verify', '--deep', '--strict', str(app)])
+        print('Verified Universal 2 personal TUN bundle and ad hoc signatures. Activation requires separate authorization.')
+        return
+    require(info.get('MacDPIPersonalTUN') is not True and not (app / 'Contents/Helpers').exists(),
+            'Personal TUN components must stay in their own build.')
     names = {component['identifier'] + '.systemextension' for kind, component in METADATA.COMPONENTS.items() if kind != 'host'}
     require({p.name for p in extension_root.iterdir()} == names, 'Unexpected/missing embedded extensions.')
     host_ent = read_entitlements(app)

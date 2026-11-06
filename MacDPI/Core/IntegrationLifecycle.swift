@@ -1,9 +1,15 @@
 import Foundation
 
 public enum TrafficIntegrationMode: String, CaseIterable, Codable, Identifiable, Sendable {
-    case transparent, localProxy
+    case personalTUN, localProxy, transparent
     public var id: String { rawValue }
-    public var title: String { self == .transparent ? "Mac-wide integration" : "Local proxy diagnostics" }
+    public var title: String {
+        switch self {
+        case .personalTUN: return "Personal TUN"
+        case .localProxy: return "Local proxy diagnostics"
+        case .transparent: return "Signed network extensions"
+        }
+    }
 }
 
 public enum IntegrationPhase: String, Codable, Sendable {

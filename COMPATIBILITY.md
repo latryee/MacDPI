@@ -1,5 +1,7 @@
 # Compatibility
 
+The 0.3.0 personal build compiles the host, route helper and packet engine for arm64 and x86_64 with a macOS 12.0 deployment target. Isolated TCP and UDP packet tests cover both IP families on Apple Silicon. The real `utun` lifecycle and desktop service compatibility remain pending. The matrix below preserves the evidence for the prior signed-extension and local proxy paths. [Personal TUN evidence](docs/TUN_VERIFICATION.md).
+
 MacDPI's host and two system extensions target macOS 12.0. The optional web window uses macOS 14 APIs. Launch at login is available from macOS 13. The minimum deployment target is checked at build time. Runtime testing on older systems and Intel hardware remains outstanding.
 
 | Capability | Implemented | Tested | Real-world verified |

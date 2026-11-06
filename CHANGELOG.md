@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 personal TUN preview
+
+- Added a separate ad hoc build with an unprivileged dual-stack TCP/UDP engine and session-scoped route helper.
+- Added guarded route plans, durable ownership records and recovery checks. Preserved local diagnostics and the optional signed Network Extension build.
+- Added isolated packet, DNS, IPC, route and app lifecycle coverage. Live activation and native service acceptance remain pending.
+
 ## 0.2.0 — local review
 
 - Bundled transparent TCP/UDP and optional DNS system extensions for Intel and Apple Silicon.

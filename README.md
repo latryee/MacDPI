@@ -1,5 +1,7 @@
 # MacDPI
 
+**0.3.0 Personal TUN preview** adds an Apple Developer membership-free build for local trials. It packages a separate unprivileged engine and a per-session administrator helper. It has passed synthetic and loopback tests. Live tunnel activation, Discord voice and Roblox gameplay await owner-approved validation. [Build, authorization and recovery](docs/PERSONAL_TUN.md).
+
 MacDPI is a native macOS utility for applying TLS ClientHello record splitting to supported outbound traffic. The 0.2.0 source and local review build bundle a transparent TCP/UDP system extension and an optional encrypted DNS extension. A provisioned and approved build is designed to route new flows from apps across the Mac through the **Enable** control. The available ad hoc package supports review and local diagnostics. Installed routing and native Discord and Roblox compatibility await real Mac testing.
 
 - **Mac-wide integration** handles eligible public IPv4 and IPv6 TCP/UDP flows. TCP ports 443, 8443 and 9443 are eligible for TLS record splitting. Other supported TCP traffic and UDP payloads are forwarded unchanged.

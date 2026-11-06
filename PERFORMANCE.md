@@ -1,5 +1,7 @@
 # Performance
 
+MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait and GUI in local mode. The enabled physical TUN path still needs an authorized trial. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+
 Local measurements on November 5, 2026 used Apple Silicon, macOS 26.6 and Xcode 27.2. The GUI sample used a development build of the embedded-provider app in isolated diagnostic mode. The headless engine and native socket tests ran on loopback. The measurements exclude installed system extensions, WebKit and external servers.
 
 | Workload | Average CPU, one core = 100% | Resident memory |

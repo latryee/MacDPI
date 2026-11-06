@@ -1,5 +1,7 @@
 # Building and release preparation
 
+For the 0.3.0 personal-use TUN build, use the separate build path and toolchain checks. The instructions below still apply to the optional Network Extension and local proxy build. [Personal TUN build](docs/PERSONAL_TUN.md#build-and-safe-checks).
+
 Use a Mac with full Xcode selected, Swift 5.9 or later, Python 3 and system OpenSSL for the TLS fixtures. The app and both system extensions target macOS 12 and build for arm64 and x86_64. The native project uses the Xcode 27.2 project format. The portable build script invokes the selected Xcode compiler directly.
 
 ```sh

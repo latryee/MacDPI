@@ -66,17 +66,30 @@ struct ContentView: View {
                     Text(model.statusDetail).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                Button(model.busy ? "Cancel" : model.isEnabled ? "Disable" : "Enable") { model.toggle() }
+                Button(model.engineButtonTitle) { model.toggle() }
                     .buttonStyle(.borderedProminent).controlSize(.large)
+                    .disabled(!model.canToggleEngine)
                     .keyboardShortcut("e", modifiers: [.command]).accessibilityIdentifier("engine-toggle")
             }
             Divider()
-            Text(model.integrationMode == .transparent
-                 ? "Mac-wide integration uses approved macOS providers for supported traffic. Active routing is separate from endpoint reachability and DPI effectiveness."
-                 : "Local diagnostics only: other applications must explicitly use this listener. This mode does not enable Mac-wide routing.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            GroupBox(model.integrationMode == .transparent ? "Supported traffic integration" : "Optional local diagnostics") {
+            GroupBox(model.integrationMode == .localProxy ? "Optional local diagnostics" : "Supported traffic integration") {
                 VStack(alignment: .leading, spacing: 10) {
-                    if model.integrationMode == .transparent {
+                    if model.integrationMode == .personalTUN {
+                        Text("Personal TUN forwards supported public TCP and UDP through a local interface. Private networks and existing network policies stay outside its route plan.")
+                        if model.authorizationCommand != nil {
+                            Button("Copy administrator command") { model.copyTUNAuthorizationCommand() }
+                                .accessibilityIdentifier("tun-copy-authorization")
+                            Text("Review and run the command in Terminal to authorize this session. Enter your administrator password only in Terminal.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if model.recoveryCommand != nil {
+                            Button("Copy recovery command") { model.copyTUNRecoveryCommand() }
+                                .accessibilityIdentifier("tun-copy-recovery")
+                            Text("Run the recovery check in Terminal before retrying. The helper checks its journal again before adding routes.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Button("Check status") { model.checkReadiness() }
+                    } else if model.integrationMode == .transparent {
                         Text("Configured scope: public TCP and UDP across ports; DNS uses a separate approved component when selected. Private/LAN, own-provider traffic and unsupported endpoints are excluded.")
                         Text("TLS record splitting applies on TCP 443, 8443 and 9443. Other supported streams/datagrams retain their bytes. UDP forwarding is not proof of UDP or QUIC circumvention.").font(.caption).foregroundStyle(.secondary)
                         HStack {
@@ -94,10 +107,12 @@ struct ContentView: View {
                     Text("Discord desktop/voice and Roblox gameplay are not verified by local fixtures or website access. Approved real application testing is still required.").font(.caption).foregroundStyle(.secondary)
                 }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
             }
-            HStack(spacing: 12) {
-                metric("Connections", value: String(model.snapshot.activeConnections), symbol: "arrow.triangle.branch")
-                metric("Records split", value: String(model.snapshot.transformed), symbol: "arrow.left.and.right")
-                metric("Transferred", value: ByteCountFormatter.string(fromByteCount: Int64(clamping: model.snapshot.uploaded &+ model.snapshot.downloaded), countStyle: .binary), symbol: "arrow.up.arrow.down")
+            if model.integrationMode != .personalTUN {
+                HStack(spacing: 12) {
+                    metric("Connections", value: String(model.snapshot.activeConnections), symbol: "arrow.triangle.branch")
+                    metric("Records split", value: String(model.snapshot.transformed), symbol: "arrow.left.and.right")
+                    metric("Transferred", value: ByteCountFormatter.string(fromByteCount: Int64(clamping: model.snapshot.uploaded &+ model.snapshot.downloaded), countStyle: .binary), symbol: "arrow.up.arrow.down")
+                }
             }
             GroupBox {
                 VStack(alignment: .leading, spacing: 12) {
@@ -110,7 +125,7 @@ struct ContentView: View {
             HStack {
                 Label(model.reachable.map { $0 ? "Network path available" : "Network path unavailable" } ?? "Network monitoring off", systemImage: "circle.fill").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text(model.integrationMode == .transparent ? "Official macOS authorization required" : "Local diagnostics").font(.caption).foregroundStyle(.secondary)
+                Text(model.integrationMode.title).font(.caption).foregroundStyle(.secondary)
             }
         }.padding(24).background(Color(NSColor.controlBackgroundColor)).cornerRadius(16)
     }
@@ -124,11 +139,13 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 20) {
             GroupBox("Connection") {
                 VStack(alignment: .leading, spacing: 16) {
-                    Picker("Operation", selection: $model.integrationMode) { ForEach(TrafficIntegrationMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("integration-mode")
+                    Picker("Operation", selection: $model.integrationMode) { ForEach(model.availableIntegrationModes) { Text($0.title).tag($0) } }.accessibilityIdentifier("integration-mode")
                     Picker("Profile", selection: $model.configuration.profile) { ForEach(Profile.allCases) { Text($0.title).tag($0) } }
                     Picker("DNS", selection: $model.configuration.dnsMode) { ForEach(DNSMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("dns-mode")
-                    Text("Cloudflare receives selected DNS names and your IP over certificate-verified HTTPS. Mac-wide mode requires separate DNS authorization; local/split/interface-bound exceptions preserve the original resolver. Local diagnostics changes only the proxy’s resolver. No silent fallback after encrypted-DNS failure.").font(.caption).foregroundStyle(.secondary)
-                    if model.integrationMode == .transparent {
+                    Text(model.integrationMode == .personalTUN
+                         ? "Cloudflare receives eligible captured DNS queries over HTTPS. Private resolvers and split domains keep their original path. If eligible encrypted DNS fails, those queries fail."
+                         : "Cloudflare receives selected DNS names over HTTPS. Local diagnostics changes only the proxy resolver. Signed extension mode requires separate DNS authorization.").font(.caption).foregroundStyle(.secondary)
+                    if model.integrationMode != .localProxy {
                         TextField("Additional split-DNS domains (comma separated)", text: Binding(get: { model.configuration.dnsBypassDomains.joined(separator: ", ") }, set: { model.configuration.dnsBypassDomains = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty } }))
                     }
                     Text(model.configuration.profile.detail).font(.caption).foregroundStyle(.secondary)
@@ -136,10 +153,12 @@ struct ContentView: View {
                     if model.configuration.profile == .advanced {
                         Stepper("Split offset: \(model.configuration.splitOffset) bytes", value: $model.configuration.splitOffset, in: 1...16_000)
                     }
-                    Stepper("Maximum connections: \(model.configuration.maxConnections)", value: $model.configuration.maxConnections, in: 1...256)
+                    if model.integrationMode != .personalTUN {
+                        Stepper("Maximum connections: \(model.configuration.maxConnections)", value: $model.configuration.maxConnections, in: 1...256)
+                    }
                 }.padding(12).disabled(model.isEnabled || model.busy)
             }
-            Text("Disable before changing configuration. Mac-wide mode requires a correctly signed, provisioned build and owner-approved providers. The local diagnostic listener remains restricted to public TCP 443.").font(.caption).foregroundStyle(.secondary)
+            Text("Disable before changing configuration. The local diagnostic listener is restricted to public TCP 443.").font(.caption).foregroundStyle(.secondary)
             if model.integrationMode == .localProxy { GroupBox("Local proxy diagnostics") {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("The optional listener uses 127.0.0.1, port \(String(model.configuration.port)). The normal app protects it with per-launch credentials kept only in memory; the optional web window supplies them automatically.")
@@ -154,7 +173,7 @@ struct ContentView: View {
                 Toggle("Launch MacDPI at login", isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) }))
                 Text("Launch at login never automatically enables the engine. macOS may request approval in Login Items.").font(.caption).foregroundStyle(.secondary)
             }
-            GroupBox("Transparent integration") {
+            if model.availableIntegrationModes.contains(.transparent) { GroupBox("Signed network extensions") {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(model.integrationStatus.detail).font(.callout).foregroundStyle(.secondary)
                     Text(model.integrationStatus.observation.dns.detail).font(.caption).foregroundStyle(.secondary)
@@ -164,7 +183,7 @@ struct ContentView: View {
                         Button("Remove MacDPI integration") { model.requestIntegrationRemoval() }.disabled(model.busy)
                     }
                 }.padding(12)
-            }
+            } }
         }
     }
     private var diagnostics: some View {
@@ -175,11 +194,15 @@ struct ContentView: View {
                 Spacer()
             }
             Text(model.diagnostics).accessibilityIdentifier("diagnostics-text").font(.system(.callout, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(18).background(Color.primary.opacity(0.04)).cornerRadius(10)
-            HStack { Text("Failed connections"); Spacer(); Text(String(model.snapshot.failures)).monospacedDigit() }
-            HStack { Text("Passed through"); Spacer(); Text(String(model.snapshot.passedThrough)).monospacedDigit() }
+            if model.integrationMode != .personalTUN {
+                HStack { Text("Failed connections"); Spacer(); Text(String(model.snapshot.failures)).monospacedDigit() }
+                HStack { Text("Passed through"); Spacer(); Text(String(model.snapshot.passedThrough)).monospacedDigit() }
+            }
             if let error = model.snapshot.lastError { Label(error, systemImage: "exclamationmark.circle").foregroundStyle(.orange) }
             Text("Reports contain aggregate counters and fixed error categories. No browsing history, traffic payloads, passwords or hostnames are recorded.").font(.caption).foregroundStyle(.secondary)
-            Text("Recovery: disable the proxy, restore the app’s previous proxy setting, then retry in Compatibility mode. Existing connections close when disabled.").font(.callout).foregroundStyle(.secondary)
+            if model.integrationMode == .localProxy {
+                Text("Disable the proxy, restore the app’s previous proxy setting, then retry in Compatibility mode. Existing connections close when disabled.").font(.callout).foregroundStyle(.secondary)
+            }
         }
     }
 }

@@ -32,10 +32,18 @@ jobs:
         run: |
           python3 scripts/integration.py
           python3 scripts/test-native-transports.py
+      - name: Personal TUN data plane and IPC fixtures
+        run: |
+          scripts/fetch-tun-toolchain.sh
+          scripts/test-tun-worker.sh
+          scripts/test-tun-ipc.sh
       - name: Universal 2 app and provider compilation
         run: scripts/build-app.sh
       - name: Prepare local review archive
         run: scripts/package-release.sh --existing
+      - name: Prepare ad hoc personal TUN archives
+        if: runner.arch == 'ARM64'
+        run: MACDPI_PERSONAL_TUN=1 MACDPI_BUILD_ROOT=build/personal scripts/package-release.sh --dmg
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -43,6 +51,7 @@ jobs:
           path: |
             build/reports/
             build/dist/
+            build/personal/dist/
           retention-days: 14
   native-ui:
     runs-on: xcode-27

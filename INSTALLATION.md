@@ -1,5 +1,7 @@
 # Installation, operation and removal
 
+Personal TUN 0.3.0 has its own authorization, stop and recovery sequence. [Personal TUN guide](docs/PERSONAL_TUN.md#first-authorized-test).
+
 ## Local review build
 
 Build from source with `scripts/build-app.sh`, then open `build/release/MacDPI.app`. Local review ZIP and DMG packages use ad hoc signatures. Distribution requires Developer ID signing and notarization. If Gatekeeper rejects a downloaded review package, build from reviewed source or obtain a notarized release.

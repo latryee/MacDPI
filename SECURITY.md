@@ -1,5 +1,7 @@
 # Security policy and review
 
+The 0.3.0 personal preview packages a separate data engine and a short-lived route helper. The UI and engine run as the user and the helper requires explicit `sudo` authorization for each live session. The personal build omits App Sandbox to use local descriptor IPC and carries no privileged signing entitlement, setuid executable or persistent daemon. The ad hoc signatures protect bundle integrity but provide no distribution identity. Only run the administrator command from a bundle you built or otherwise trust. [Personal TUN authorization and recovery](docs/PERSONAL_TUN.md), [route ownership and rollback](docs/TUN_ROUTE_SAFETY.md).
+
 This is a source and isolated-test review. Installed provider, OS approval and cross-product filtering behavior still require validation. After publication, use the repository's private vulnerability reporting channel when available. Avoid sharing credentials or captured traffic in public issues.
 
 - **Local access.** The app binds only to IPv4 loopback. It generates a random per-launch credential, validates CONNECT requests and checks authentication before any DNS or outbound connection. Duplicate credentials, request bodies and transfer encoding are rejected. The headless CLI is an unauthenticated loopback test utility and is excluded from the app bundle. A local process can still compete for a bounded listener slot. Explicit clipboard copies can expose the current credential to other local clipboard readers.

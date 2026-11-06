@@ -16,7 +16,11 @@ scripts/verify-release.sh "$app"
 version="$(cat VERSION)"
 mkdir -p "$build_root/dist"
 label=local-adhoc
-if codesign -dvv "$app" 2>&1 | /usr/bin/grep -q 'Authority=Developer ID Application'; then label=developer-id; fi
+mode=$(/usr/libexec/PlistBuddy -c 'Print :MacDPIIntegrationBuild' "$app/Contents/Info.plist")
+case "$mode" in
+  local-personal) label=personal-adhoc ;;
+  developer-id) label=developer-id ;;
+esac
 base="MacDPI-$version-universal2-$label"
 stage="$(mktemp -d "$build_root/package.XXXXXX")"
 trap 'rm -rf -- "$stage"' EXIT
