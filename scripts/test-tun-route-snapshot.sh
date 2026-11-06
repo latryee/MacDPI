@@ -9,4 +9,4 @@ xcrun swiftc -swift-version 5 -import-objc-header IntegrationSupport/TUNNative.h
   MacDPI/Core/TUNRoutePlanning.swift MacDPI/Core/TUNRouteTransaction.swift \
   Tools/MacDPITUNHelper/DarwinRouteBackend.swift Tools/TUNRouteFixture/main.swift \
   "$scratch/TUNNative.o" -o "$scratch/check"
-"$scratch/check"
+"$scratch/check" "$@"
