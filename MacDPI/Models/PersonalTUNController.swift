@@ -37,6 +37,11 @@ final class PersonalTUNController {
 
     init(allowed: Bool) { self.allowed = allowed }
 
+    var resourceProcessIDs: [Int32] {
+        guard phase == .active, let process, process.isRunning else { return [] }
+        return [getpid(), process.processIdentifier]
+    }
+
     private var helpers: URL { Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers", isDirectory: true) }
     var recoveryCommand: String? {
         guard allowed else { return nil }

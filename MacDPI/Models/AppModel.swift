@@ -29,9 +29,14 @@ protocol PersonalTUNControlling: AnyObject {
     var phase: PersonalTUNPhase { get }
     var detail: String { get }
     var recoveryCommand: String? { get }
+    var resourceProcessIDs: [Int32] { get }
     var changed: (() -> Void)? { get set }
     func start(_ configuration: Configuration)
     func stop(completion: ((Bool) -> Void)?)
+}
+
+extension PersonalTUNControlling {
+    var resourceProcessIDs: [Int32] { [] }
 }
 
 extension PersonalTUNController: PersonalTUNControlling {}
@@ -52,6 +57,9 @@ final class AppModel: ObservableObject {
     @Published private(set) var systemProxyLinked = false
     @Published private(set) var integrationStatus = IntegrationStatus()
     @Published private(set) var personalTUNPhase: PersonalTUNPhase = .disabled
+    @Published private(set) var personalTUNUsage: ProcessResourceUsage?
+    @Published private(set) var measuringTUNUsage = false
+    @Published private(set) var tunUsageDetail = "App and engine only. Session helper excluded."
     @Published var pendingConsent: IntegrationConsent?
     @Published private var selectedIntegrationMode: TrafficIntegrationMode
     var integrationMode: TrafficIntegrationMode {
@@ -82,6 +90,10 @@ final class AppModel: ObservableObject {
     private var operation = UUID()
     private var tracksIntegrationDiagnostics = false
     private var tunActiveSince: Date?
+    private let resourceReader: (Int32) -> ProcessResourceReading?
+    private let resourceMeasurementDelay: () async -> Void
+    private var resourceMeasurement: Task<Void, Never>?
+    private var resourceMeasurementID = UUID()
     var availableIntegrationModes: [TrafficIntegrationMode] {
         personalTUNAvailable ? [.personalTUN, .localProxy] : [.localProxy, .transparent]
     }
@@ -128,7 +140,11 @@ final class AppModel: ObservableObject {
 
     init(engine: EngineControlling? = nil, store: ConfigurationStoring? = nil,
          integrationDriver: IntegrationDriving? = nil, mode: TrafficIntegrationMode? = nil,
-         personalTUNController: PersonalTUNControlling? = nil) {
+         personalTUNController: PersonalTUNControlling? = nil,
+         resourceReader: @escaping (Int32) -> ProcessResourceReading? = ProcessResourceReader.read,
+         resourceMeasurementDelay: @escaping () async -> Void = { try? await Task.sleep(nanoseconds: 1_000_000_000) }) {
+        self.resourceReader = resourceReader
+        self.resourceMeasurementDelay = resourceMeasurementDelay
         let arguments = ProcessInfo.processInfo.arguments
         let needsCredential = engine == nil && !Self.isIsolatedLaunch
         let token = needsCredential ? Self.makeLocalProxyToken() : nil
@@ -261,6 +277,7 @@ final class AppModel: ObservableObject {
     }
     private func personalTUNDidChange() {
         personalTUNPhase = personalTUN.phase
+        if personalTUNPhase != .active { clearTUNResourceMeasurement() }
         guard integrationMode == .personalTUN else { return }
         busy = personalTUNPhase.busy
         if personalTUNPhase == .active {
@@ -271,6 +288,58 @@ final class AppModel: ObservableObject {
             path?.cancel(); path = nil; reachable = nil
         }
         updateTUNDiagnostics()
+    }
+    func measureTUNUsage() {
+        guard integrationMode == .personalTUN, personalTUNPhase == .active, !measuringTUNUsage else { return }
+        let ids = personalTUN.resourceProcessIDs
+        guard let first = readTUNResources(ids) else {
+            personalTUNUsage = nil
+            tunUsageDetail = "Usage is unavailable for this session."
+            updateTUNDiagnostics()
+            return
+        }
+        let started = DispatchTime.now().uptimeNanoseconds
+        let measurement = UUID()
+        resourceMeasurementID = measurement
+        personalTUNUsage = nil
+        measuringTUNUsage = true
+        tunUsageDetail = "Measuring app and engine usage…"
+        let delay = resourceMeasurementDelay
+        resourceMeasurement = Task { [weak self] in
+            await delay()
+            guard !Task.isCancelled, let self, self.resourceMeasurementID == measurement else { return }
+            defer { self.measuringTUNUsage = false; self.resourceMeasurement = nil }
+            guard self.integrationMode == .personalTUN, self.personalTUNPhase == .active,
+                  self.personalTUN.resourceProcessIDs == ids else {
+                self.personalTUNUsage = nil
+                self.tunUsageDetail = "The session changed. Measure usage again."
+                self.updateTUNDiagnostics()
+                return
+            }
+            let last = self.readTUNResources(ids)
+            let finished = DispatchTime.now().uptimeNanoseconds
+            let elapsed = finished > started ? Double(finished - started) / 1_000_000_000 : 0
+            self.personalTUNUsage = last.flatMap { ProcessResourceUsage.between(first: first, last: $0, elapsedSeconds: elapsed) }
+            self.tunUsageDetail = self.personalTUNUsage == nil
+                ? "Usage is unavailable for this session."
+                : String(format: "%.1f-second sample · app and engine only. Session helper excluded.", elapsed)
+            self.updateTUNDiagnostics()
+        }
+    }
+    private func readTUNResources(_ ids: [Int32]) -> [Int32: ProcessResourceReading]? {
+        guard ids.count == 2, Set(ids).count == ids.count, ids.allSatisfy({ $0 > 0 }) else { return nil }
+        var readings: [Int32: ProcessResourceReading] = [:]
+        for id in ids {
+            guard let reading = resourceReader(id) else { return nil }
+            readings[id] = reading
+        }
+        return readings
+    }
+    private func clearTUNResourceMeasurement() {
+        resourceMeasurementID = UUID()
+        resourceMeasurement?.cancel(); resourceMeasurement = nil
+        personalTUNUsage = nil; measuringTUNUsage = false
+        tunUsageDetail = "App and engine only. Session helper excluded."
     }
     private func startRefresh() {
         refresh?.cancel()
@@ -330,7 +399,10 @@ final class AppModel: ObservableObject {
     private func updateTUNDiagnostics() {
         let elapsed = tunActiveSince.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds" } ?? "unavailable"
         let dns = usesAutomaticTUNConfiguration ? "System DNS with selective TLS repair" : effectiveConfiguration.dnsMode.title
-        diagnostics = "Personal TUN · \(statusTitle)\n\(statusDetail)\nDNS option · \(dns)\nSession duration · \(elapsed)\nAggregate traffic and resource measurements are unavailable here.\nDiscord voice and Roblox gameplay require an approved live test."
+        let usage = personalTUNUsage.map { String(format: "CPU · %.1f%% of one core\nMemory · %@", $0.cpuPercent,
+                ByteCountFormatter.string(fromByteCount: Int64(clamping: $0.residentBytes), countStyle: .binary)) }
+            ?? "Usage · not measured"
+        diagnostics = "Personal TUN · \(statusTitle)\n\(statusDetail)\nDNS option · \(dns)\nSession duration · \(elapsed)\n\(usage)\n\(tunUsageDetail)\nTraffic counters are unavailable here.\nApplication compatibility depends on the network; test voice and gameplay separately."
     }
     func refreshRoutingStatus() {
         if integrationMode == .transparent { integration.refresh() }

@@ -109,7 +109,20 @@ struct ContentView: View {
                     Text("Discord desktop/voice and Roblox gameplay are not verified by local fixtures or website access. Approved real application testing is still required.").font(.caption).foregroundStyle(.secondary)
                 }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
             }
-            if model.integrationMode != .personalTUN {
+            if model.integrationMode == .personalTUN {
+                GroupBox("Resource usage · app and engine") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            metric("CPU", value: model.personalTUNUsage.map { String(format: "%.1f%%", $0.cpuPercent) } ?? "—", symbol: "cpu")
+                            metric("Memory", value: model.personalTUNUsage.map { ByteCountFormatter.string(fromByteCount: Int64(clamping: $0.residentBytes), countStyle: .binary) } ?? "—", symbol: "memorychip")
+                        }
+                        Button(model.measuringTUNUsage ? "Measuring…" : "Measure usage") { model.measureTUNUsage() }
+                            .disabled(!model.isEnabled || model.measuringTUNUsage)
+                            .accessibilityIdentifier("tun-measure-usage")
+                        Text(model.tunUsageDetail).font(.caption).foregroundStyle(.secondary)
+                    }.padding(10)
+                }
+            } else {
                 HStack(spacing: 12) {
                     metric("Connections", value: String(model.snapshot.activeConnections), symbol: "arrow.triangle.branch")
                     metric("Records split", value: String(model.snapshot.transformed), symbol: "arrow.left.and.right")

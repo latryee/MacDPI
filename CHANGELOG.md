@@ -8,6 +8,7 @@
 - Added Automatic setup and bounded, coalesced TLS origin repair lookups while preserving ordinary System DNS and end-to-end certificate validation.
 - Added isolated packet, DNS, IPC, route, mixed-load and app lifecycle coverage. Verified real GUI activation/Disable and public HTTPS/API/WSS requests. The owner confirmed bidirectional Discord audio and a Roblox game session on one Mac/network.
 - Recorded a 496-second live resource sample. Intel/older macOS runtime, extended stability, live crash/network transitions and notarization remain unverified.
+- Build 4 adds on-demand app/engine CPU and RSS display, with unavailable/stale samples handled explicitly and no resource polling while idle. Its 126 core and 27 hosted model tests passed; the owner-participated live trial used build 3.
 
 ## 0.2.0 — local review
 

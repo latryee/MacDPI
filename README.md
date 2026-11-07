@@ -6,6 +6,8 @@ On November 7, 2026, the owner confirmed bidirectional Discord audio and a Roblo
 
 The personal build uses System DNS for ordinary traffic and selective Cloudflare DoH for eligible Discord/Roblox TLS origin repair. TCP ClientHello record splitting preserves the encrypted connection and client certificate checks. UDP datagrams pass unchanged; forwarding does not imply a general UDP or QUIC circumvention technique. [Privacy](PRIVACY.md), [compatibility](COMPATIBILITY.md).
 
+**Measure usage** takes a short CPU/RSS sample of the app and its own unprivileged engine. The session helper is excluded and the scope is displayed. Measurement is on demand, without background resource polling or traffic inspection. The build 4 UI update passed 126 core and 27 hosted model tests; the real voice/game trial above used build 3. [UI update verification](docs/verification/0.3.0-resource-ui.json).
+
 Build the personal Universal 2 app, ZIP, DMG and checksums with full Xcode and Python 3:
 
 ```sh

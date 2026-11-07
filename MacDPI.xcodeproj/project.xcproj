@@ -267,7 +267,7 @@
     "CLANG_WARN_UNREACHABLE_CODE": "YES",
     "CLANG_WARN__DUPLICATE_METHOD_MATCH": "YES",
     "COPY_PHASE_STRIP": "NO",
-    "CURRENT_PROJECT_VERSION": "3",
+    "CURRENT_PROJECT_VERSION": "4",
     "DEBUG_INFORMATION_FORMAT[config=Debug]": "dwarf",
     "DEBUG_INFORMATION_FORMAT[config=Release]": "dwarf-with-dsym",
     "ENABLE_NS_ASSERTIONS[config=Release]": "NO",

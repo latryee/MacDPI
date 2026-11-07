@@ -23,6 +23,7 @@ private final class FakePersonalTUN: PersonalTUNControlling {
     var phase: PersonalTUNPhase = .disabled
     var detail = "Fixture status"
     let recoveryCommand: String? = "fixture recovery"
+    var resourceProcessIDs: [Int32] = [1, 2]
     var changed: (() -> Void)?
     var configuration: Configuration?
     var stopCompletion: ((Bool) -> Void)?
@@ -44,6 +45,79 @@ private final class FakePersonalTUN: PersonalTUNControlling {
 }
 
 final class MacDPITests: XCTestCase {
+    @MainActor
+    func testPersonalTunnelUsageSamplesOnlyTheActiveSession() async {
+        let tun = FakePersonalTUN()
+        var reads: [Int32: UInt64] = [:]
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), mode: .personalTUN,
+                             personalTUNController: tun, resourceReader: { pid in
+            reads[pid, default: 0] += 1
+            return ProcessResourceReading(identity: UInt64(pid), cpuNanoseconds: reads[pid]! * 1_000_000,
+                                          residentBytes: UInt64(pid) * 1024)
+        }, resourceMeasurementDelay: { await Task.yield() })
+        model.measureTUNUsage()
+        XCTAssertTrue(reads.isEmpty)
+        model.enable()
+        model.measureTUNUsage()
+        XCTAssertTrue(reads.isEmpty)
+        tun.setPhase(.active)
+        model.measureTUNUsage()
+        for _ in 0..<20 where model.measuringTUNUsage { await Task.yield() }
+        XCTAssertFalse(model.measuringTUNUsage)
+        XCTAssertEqual(reads, [1: 2, 2: 2])
+        XCTAssertEqual(model.personalTUNUsage?.residentBytes, 3072)
+        XCTAssertNotNil(model.personalTUNUsage?.cpuPercent)
+        XCTAssertTrue(model.diagnostics.contains("Session helper excluded"))
+    }
+
+    @MainActor
+    func testPersonalTunnelUsageCannotReappearAfterDisable() async {
+        let tun = FakePersonalTUN()
+        var resume: CheckedContinuation<Void, Never>?
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), mode: .personalTUN,
+                             personalTUNController: tun,
+                             resourceReader: { ProcessResourceReading(identity: UInt64($0), cpuNanoseconds: 1, residentBytes: 1024) },
+                             resourceMeasurementDelay: { await withCheckedContinuation { resume = $0 } })
+        tun.setPhase(.active)
+        model.measureTUNUsage()
+        for _ in 0..<20 where resume == nil { await Task.yield() }
+        XCTAssertTrue(model.measuringTUNUsage)
+        XCTAssertNotNil(resume)
+        model.disable()
+        tun.setPhase(.disabled)
+        resume?.resume()
+        for _ in 0..<5 { await Task.yield() }
+        XCTAssertNil(model.personalTUNUsage)
+        XCTAssertFalse(model.measuringTUNUsage)
+        XCTAssertFalse(model.diagnostics.contains("CPU ·"))
+    }
+
+    @MainActor
+    func testPersonalTunnelUsageRejectsChangedOrUnavailableProcesses() async {
+        let tun = FakePersonalTUN()
+        var resume: CheckedContinuation<Void, Never>?
+        var readable = false
+        let model = AppModel(engine: FakeEngine(), store: MemoryConfigurationStore(), mode: .personalTUN,
+                             personalTUNController: tun,
+                             resourceReader: { readable ? ProcessResourceReading(identity: UInt64($0), cpuNanoseconds: 1, residentBytes: 1024) : nil },
+                             resourceMeasurementDelay: { await withCheckedContinuation { resume = $0 } })
+        tun.setPhase(.active)
+        model.measureTUNUsage()
+        XCTAssertNil(model.personalTUNUsage)
+        XCTAssertFalse(model.measuringTUNUsage)
+        XCTAssertTrue(model.tunUsageDetail.contains("unavailable"))
+        readable = true
+        model.measureTUNUsage()
+        for _ in 0..<20 where resume == nil { await Task.yield() }
+        XCTAssertNotNil(resume)
+        tun.resourceProcessIDs = [3, 4]
+        resume?.resume()
+        for _ in 0..<20 where model.measuringTUNUsage { await Task.yield() }
+        XCTAssertNil(model.personalTUNUsage)
+        XCTAssertFalse(model.measuringTUNUsage)
+        XCTAssertTrue(model.tunUsageDetail.contains("session changed"))
+    }
+
     @MainActor
     func testPersonalTunnelUsesVerifiedStateAndKeepsProxyIdle() {
         let tun = FakePersonalTUN(), proxy = FakeEngine()
