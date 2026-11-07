@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at_utc": "2026-11-07T23:48:33Z",
+  "last_updated_at_utc": "2026-11-07T23:56:17Z",
   "version": "0.3.0",
   "build": "6",
   "status": "Local preview candidate prepared; final live validation and publication approval pending",
@@ -36,7 +37,20 @@
     "unified_log_smoke_scope": "Only the unprivileged fixture PID and MacDPI subsystem/category were queried; no personal traffic or root invocation",
     "native_ui_cases_from_prior_run": 3,
     "current_native_ui_run_performed": false,
-    "current_gui_inspection": "Unavailable because the Mac was locked; no unlock or UI interaction was attempted through another mechanism"
+    "current_gui_inspection": "Manual inspection of the verified stable build 6 passed after the Mac became accessible. This is not an automated UI test or live activation.",
+    "manual_gui_check": {
+      "recorded_at_utc": "2026-11-07T23:56:17Z",
+      "overview_disabled_and_enable_available": true,
+      "resource_card_present_measurement_disabled_while_inactive": true,
+      "settings_personal_tun_and_automatic_setup_checked": true,
+      "automatic_standard_system_dns_scope_visible": true,
+      "launch_at_login_unchecked": true,
+      "running_executable_matches_verified_stable_build_6": true,
+      "engine_and_helper_absent": true,
+      "settings_changed": false,
+      "enable_pressed_or_authorization_requested": false,
+      "prior_unavailability": "An earlier inspection could not proceed while the Mac was locked; no alternative unlock mechanism was used"
+    }
   },
   "packaging": {
     "architectures": ["arm64", "x86_64"],
@@ -59,7 +73,8 @@
       "other_generated_compiler_and_test_caches_moved_to_trash": ["tun-go-cache", "tun-go-mod", "tun-quality-swift", "tun-worker-tests", "tun-toolchain", "release-check"],
       "preserved_0_2_0_baseline": true,
       "raw_test_evidence_preserved": true,
-      "app_launched_after_replacement": false
+      "app_launched_after_replacement": true,
+      "post_replacement_launch_scope": "Later unprivileged manual GUI inspection only; app remained Disabled"
     }
   },
   "binary_sha256": {
@@ -97,7 +112,6 @@
     "requires_explicit_publication_approval": true
   },
   "remaining_validation": [
-    "Unlocked-Mac GUI inspection of build 6",
     "Fresh approved live activation, bounded stability and Disable/restoration verification using build 6",
     "Approved live failure, reconnect, sleep/wake and network/VPN transitions",
     "Intel, older macOS and physical IPv6 runtime coverage",

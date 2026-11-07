@@ -76,7 +76,7 @@ Enable temporarily adds MacDPI-owned capture routes. Disable releases the sessio
 | Build and packaging | Universal 2 signatures and exact extracted ZIP/DMG contents verified. [Current package record](docs/verification/0.3.0-release-readiness.json) |
 | Short resource sample | Over 496 seconds with uncontrolled owner traffic, the app/engine/helper averaged 0.411% of one CPU core and peaked at 130.33 MiB combined RSS. This is not a strict idle or long-term benchmark. [Measurements](PERFORMANCE.md) |
 
-The voice/game trial used build 3. Build 6 has separate local, lifecycle and packaging verification; it has not been counted as another live service trial. Three native UI cases passed in a prior run. The current interactive check was unavailable because the test Mac was locked, which is not a test failure. The late unexpected stop is recorded in [the follow-up report](docs/verification/0.3.0-late-stop.json).
+The voice/game trial used build 3. Build 6 has separate local, lifecycle and packaging verification; it has not been counted as another live service trial. Build 6 received a manual read-only check of its Disabled Overview and Personal TUN/Automatic setup Settings. No setting or activation was changed. The three automated native UI cases belong to a prior run; they were not rerun for build 6. The late unexpected stop is recorded in [the follow-up report](docs/verification/0.3.0-late-stop.json).
 
 ## Limits and troubleshooting
 

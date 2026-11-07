@@ -49,4 +49,4 @@ Update the shared marketing version and advance the build number with `scripts/s
 
 Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The current Debug CLI passed 23 loopback scenarios; four native TCP/UDP IPv4/IPv6 scenarios, the full Go suite with 15-second mixed traffic per family, capacity/lifecycle checks and native IPC also passed. Exact archives, signatures and post-promotion checksums were verified. [Current release proof](docs/verification/0.3.0-release-readiness.json).
 
-The three native UI cases are an earlier run. The current interactive check was unavailable because the test Mac was locked; this is not a failed test. No live build 6 activation or 30-minute stability test is claimed.
+Build 6 received a manual read-only Overview/Settings check while Disabled. The three automated native UI cases remain an earlier run; no automated UI suite was rerun. No setting was changed. No live build 6 activation or 30-minute stability test is claimed.

@@ -12,7 +12,7 @@
 - Build 5 uses neutral wording for cleanup-confirmed failures instead of attributing an unknown stop to the helper. A later build 3 stop remains unexplained and is recorded separately; extended stability is not claimed.
 
 - Build 6 adds fixed-category local failure diagnostics. Worker categories require a failed final session outcome; normal stop/cancellation does not produce a worker-failure log. Stop before readiness is normal cancellation, and known-lease detach is verified even without ownership or a journal.
-- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. The current interactive UI check was unavailable on the locked Mac; no live build 6 or 30-minute result is claimed.
+- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. Build 6 Overview/Settings were manually checked while Disabled without changing settings. The three native UI cases remain prior automated results; no live build 6 or 30-minute result is claimed.
 
 ## 0.2.0 — local review
 
