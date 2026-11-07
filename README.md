@@ -1,6 +1,22 @@
 # MacDPI
 
-**0.3.0 Personal TUN preview** adds an Apple Developer membership-free build for local trials. It packages a separate unprivileged engine and a per-session administrator helper. It has passed synthetic and loopback tests. Live tunnel activation, Discord voice and Roblox gameplay await owner-approved validation. [Build, authorization and recovery](docs/PERSONAL_TUN.md).
+**0.3.0 Personal TUN preview** provides local TCP/UDP traffic handling without a paid Apple Developer membership, a remote VPN server or a separately installed DPI tool. Press **Enable**, approve macOS administrator authorization and use supported desktop applications without configuring their proxies. **Disable** releases the session's interface and routes. [Build, authorization and recovery](docs/PERSONAL_TUN.md).
+
+On November 7, 2026, the owner confirmed bidirectional Discord audio and a Roblox game session while Automatic setup was active on the development Mac. Certificate-verified public HTTPS, the Discord API and an unauthenticated Gateway WebSocket also passed through the real tunnel. This is evidence from one Mac and network, not a guarantee for other providers or destinations. A 496-second process sample measured 0.41% combined CPU and 130.33 MiB peak RSS. [Current engineering report](docs/PERSONAL_REPORT_0.3.0.md), [verification scope](docs/TUN_VERIFICATION.md).
+
+The personal build uses System DNS for ordinary traffic and selective Cloudflare DoH for eligible Discord/Roblox TLS origin repair. TCP ClientHello record splitting preserves the encrypted connection and client certificate checks. UDP datagrams pass unchanged; forwarding does not imply a general UDP or QUIC circumvention technique. [Privacy](PRIVACY.md), [compatibility](COMPATIBILITY.md).
+
+Build the personal Universal 2 app, ZIP, DMG and checksums with full Xcode and Python 3:
+
+```sh
+scripts/fetch-tun-toolchain.sh
+MACDPI_PERSONAL_TUN=1 MACDPI_BUILD_ROOT=build/personal scripts/package-release.sh --dmg
+open build/personal/release/MacDPI.app
+```
+
+The compiler is fetched explicitly with a pinned checksum. Go and gVisor are linked into the bundled worker; users need no separate runtime installation. The app, helper and worker have arm64/x86_64 slices targeting macOS 12. Runtime evidence is currently Apple Silicon/macOS 26.6. The package is ad hoc signed, not Developer ID signed or notarized. If macOS declines a downloaded copy, build from reviewed source; do not weaken system security settings.
+
+## Preserved Network Extension and local proxy builds
 
 MacDPI is a native macOS utility for applying TLS ClientHello record splitting to supported outbound traffic. The 0.2.0 source and local review build bundle a transparent TCP/UDP system extension and an optional encrypted DNS extension. A provisioned and approved build is designed to route new flows from apps across the Mac through the **Enable** control. The available ad hoc package supports review and local diagnostics. Installed routing and native Discord and Roblox compatibility await real Mac testing.
 
@@ -9,7 +25,7 @@ MacDPI is a native macOS utility for applying TLS ClientHello record splitting t
 - **Local proxy diagnostics** uses a credential-protected loopback HTTP CONNECT listener for public TCP 443. On macOS 14 and later, the optional proxied web window supplies those credentials automatically.
 - **Compatibility** forwards bytes unchanged. **Standard** chooses a split inside the visible server name or at payload byte 32. **Advanced** uses the selected offset. End-to-end TLS certificate checks remain in the client.
 
-The 0.1.0 local proxy reached selected Discord web/API and WebSocket endpoints and Roblox web/API endpoints on one network on November 4, 2026. Voice, gameplay and desktop application routing require separate acceptance tests. [Historical test evidence](docs/REAL_NETWORK_VALIDATION.md).
+The 0.1.0 local proxy reached selected Discord web/API and WebSocket endpoints and Roblox web/API endpoints on one network on November 4, 2026. That historical test did not establish voice, gameplay or desktop application routing. [Historical test evidence](docs/REAL_NETWORK_VALIDATION.md).
 
 On a Mac with full Xcode and Swift 5.9 or later:
 
@@ -27,6 +43,6 @@ scripts/test.sh
 scripts/package-release.sh --existing --dmg
 ```
 
-MacDPI uses Apple frameworks and direct connections. It has no telemetry, external traffic relay or third-party runtime dependencies. It preserves TLS authentication and retains only aggregate diagnostics. Circumvention effectiveness depends on the network and protocol. [Engineering report](docs/FINAL_REPORT.md), [test results](TEST_RESULTS.md), [performance](PERFORMANCE.md), [architecture](ARCHITECTURE.md), [security](SECURITY.md), [privacy](PRIVACY.md).
+MacDPI uses direct connections and has no telemetry or external traffic relay. The personal worker includes Go/gVisor and bundled dependency notices; no external DPI executable or runtime download is used at application startup. TLS authentication stays with the client. Circumvention effectiveness depends on the network and protocol. [Current report](docs/PERSONAL_REPORT_0.3.0.md), [0.2.0 report](docs/FINAL_REPORT.md), [test results](TEST_RESULTS.md), [performance](PERFORMANCE.md), [architecture](ARCHITECTURE.md), [security](SECURITY.md), [privacy](PRIVACY.md).
 
 MIT licensed.

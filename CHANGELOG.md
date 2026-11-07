@@ -4,7 +4,10 @@
 
 - Added a separate ad hoc build with an unprivileged dual-stack TCP/UDP engine and session-scoped route helper.
 - Added guarded route plans, durable ownership records and recovery checks. Preserved local diagnostics and the optional signed Network Extension build.
-- Added isolated packet, DNS, IPC, route and app lifecycle coverage. Live activation and native service acceptance remain pending.
+- Added automatic macOS administrator authorization with embedded helper hashes, private root staging and authenticated descriptor handoff. Normal Enable no longer needs a pasted Terminal command.
+- Added Automatic setup and bounded, coalesced TLS origin repair lookups while preserving ordinary System DNS and end-to-end certificate validation.
+- Added isolated packet, DNS, IPC, route, mixed-load and app lifecycle coverage. Verified real GUI activation/Disable and public HTTPS/API/WSS requests. The owner confirmed bidirectional Discord audio and a Roblox game session on one Mac/network.
+- Recorded a 496-second live resource sample. Intel/older macOS runtime, extended stability, live crash/network transitions and notarization remain unverified.
 
 ## 0.2.0 — local review
 
@@ -27,4 +30,4 @@
 - Local parser/lifecycle/model/UI/socket/TLS tests, reproducible benchmarks, CI and review packaging.
 - MIT license, privacy/security documentation and release preparation.
 
-Universal real-network coverage, native gameplay/voice UDP, older OS/Intel runtime coverage, provider activation, Developer ID signing and notarization remain unverified or blocked. No public release has been published.
+Universal real-network coverage, UDP-specific circumvention, older OS/Intel runtime coverage, legacy provider activation, Developer ID signing and notarization remain unverified or blocked. No public release has been published.

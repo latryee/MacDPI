@@ -1,5 +1,7 @@
 # MacDPI 0.2.0 engineering report
 
+This report preserves the 0.2.0 baseline. The current personal TUN report is [MacDPI 0.3.0](PERSONAL_REPORT_0.3.0.md).
+
 MacDPI now embeds two Universal 2 system extensions and connects the native **Enable** control to an approval-aware Mac-wide integration lifecycle. The local review release contains the host and both providers. Its ad hoc signature permits local review and diagnostics. Mac-wide activation requires the provisioned Developer ID build and explicit owner approval.
 
 ## What changed

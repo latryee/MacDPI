@@ -1,6 +1,8 @@
 # Performance
 
-MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait and GUI in local mode. A short authorized physical TUN trial verified Enable, public HTTPS and Disable. Enabled-path resource use and physical throughput still need a dedicated authorized measurement. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait, GUI in local mode and an approved physical TUN session. Physical throughput, strict enabled-idle, battery and long-term stability still need dedicated measurements. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+
+During the owner-participated voice/game trial on November 7, 100 passive process samples covered 496.17 seconds. The app, engine and helper together averaged 0.411% CPU with a peak combined RSS of 130.33 MiB (about 136.7 MB). Their combined first/last RSS was 124.25/124.97 MiB. The owner reported two-way Discord audio and remaining in a Roblox game, but activity was not controlled or correlated with each sample. These results describe that short enabled session. They do not establish strict idle usage, a memory-growth bound, battery life or quantified voice/game latency. [Sanitized live evidence](docs/verification/0.3.0-live-personal.json).
 
 The November 7 mixed-load fixture ran four paced TCP flows and four UDP flows together for 15 seconds per address family. Each family verified 58.56 MiB of TCP payload in each direction and all 2,996 UDP replies, with no additional loss or payload mismatch. Median UDP RTT was 0.249 ms for IPv4 and 0.255 ms for IPv6; the 95th percentiles were 0.974 ms and 1.090 ms. Cancellation released every worker flow.
 

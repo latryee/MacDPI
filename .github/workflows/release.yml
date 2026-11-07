@@ -16,10 +16,16 @@ jobs:
           xcrun swiftc -swift-version 5 Tools/TLSFixture/main.swift -o build/tls-fixture
           python3 scripts/integration.py
           python3 scripts/test-native-transports.py
-      - run: scripts/package-release.sh --dmg
+      - name: Personal TUN safe fixtures
+        run: |
+          scripts/fetch-tun-toolchain.sh
+          scripts/test-tun-worker.sh
+          scripts/test-tun-ipc.sh
+      - name: Prepare personal Universal 2 ZIP, DMG and checksums
+        run: MACDPI_PERSONAL_TUN=1 MACDPI_BUILD_ROOT=build/personal scripts/package-release.sh --dmg
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: MacDPI-local-review-only
-          path: build/dist/
-# Publishing is intentionally a separate manual maintainer operation after Developer ID
-# signing, notarization, verification and explicit authorization. No release is created here.
+          name: MacDPI-personal-adhoc
+          path: build/personal/dist/
+# This only prepares ad hoc artifacts. GitHub publication requires explicit authorization.
+# Developer ID signing and notarization are separate distribution options, not asserted here.

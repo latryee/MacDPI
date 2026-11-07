@@ -1,5 +1,7 @@
 # MacDPI 0.2.0 verification
 
+This is the preserved 0.2.0 baseline. Current personal TUN build, unit, synthetic, GUI and owner-participated service evidence is recorded in [0.3.0 verification](docs/TUN_VERIFICATION.md) and the [0.3.0 report](docs/PERSONAL_REPORT_0.3.0.md).
+
 November 5, 2026 on Apple Silicon, macOS 26.6 (25G72), Xcode 27.2 (27B52) and Swift 6.4.2. Universal 2 packaging verifies both slices. Actual execution in this report uses the development Mac.
 
 | Verification | Result |

@@ -1,5 +1,11 @@
 # Architecture
 
+## Personal TUN 0.3.0
+
+The primary personal-use build separates SwiftUI/AppKit, an unprivileged Swift/Go data engine and a session-only route helper. macOS authorization runs only the verified helper as root. It creates a Darwin `utun`, journals its public-prefix capture plan and transfers a duplicated descriptor to the authenticated worker. The worker's gVisor stack reconstructs TCP/UDP and binds every physical outbound socket to the recorded egress interface. TCP uses the existing Swift TLS record processor; UDP payloads remain unchanged. Automatic setup leaves ordinary System DNS as found and can repair eligible TLS origins through validated Cloudflare answers. There is no remote relay, persistent root daemon or hidden runtime download. [Detailed design and bounds](docs/PERSONAL_TUN.md), [route transaction](docs/TUN_ROUTE_SAFETY.md), [current evidence](docs/TUN_VERIFICATION.md).
+
+The Network Extension and local proxy designs below are preserved independent modes. They are not required by the personal TUN package.
+
 ## Mac-wide integration
 
 ```text

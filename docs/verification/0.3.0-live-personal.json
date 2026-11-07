@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-07T17:55:31.902989+00:00",
+  "version": "0.3.0",
+  "build": "3",
+  "binary_sha256": {
+    "host": "f129dc2e9d64c686ea095786a0599991d5dd7ef55917d26d7bf63138e6f78614",
+    "engine": "e6a02380e3fe84d2f7fc7b8aaa6c98270e9c559ec64c2b79aa2b6ebc2354b33f",
+    "helper": "0785cce7a65f65778337169037986b98665dc4792295d77a6247c771ad3b0c08"
+  },
+  "platform": {
+    "architecture": "arm64",
+    "macos": "26.6"
+  },
+  "scope": "Owner-approved GUI test, passive process CPU/RSS and fixed unauthenticated public endpoints. Owner performed account, voice and gameplay interactions; the agent did not inspect authenticated sessions or traffic contents.",
+  "authorization_timeout": {
+    "policy_matches_baseline": true,
+    "resolver_matches_baseline": true,
+    "MacDPITUNEngine_running": false,
+    "MacDPITUNHelper_running": false,
+    "osascript_running": false,
+    "staging_directories_after": 0
+  },
+  "public_probes": {
+    "ordinary_https": true,
+    "discord_public_api": true,
+    "unauthenticated_gateway_websocket": {
+      "passed": true,
+      "tls_verified": true,
+      "http_status": 101,
+      "hello_received": true,
+      "seconds": 0.6670513339999999
+    },
+    "active_https_timings": {
+      "ordinary_https": [
+        {
+          "curl_exit": 0,
+          "http_status": 200,
+          "dns_seconds": 0.012139,
+          "tcp_seconds": 0.012475,
+          "tls_seconds": 0.121971,
+          "first_byte_seconds": 0.182938,
+          "total_seconds": 0.185292
+        },
+        {
+          "curl_exit": 0,
+          "http_status": 200,
+          "dns_seconds": 0.002801,
+          "tcp_seconds": 0.003157,
+          "tls_seconds": 0.119548,
+          "first_byte_seconds": 0.181225,
+          "total_seconds": 0.183463
+        },
+        {
+          "curl_exit": 0,
+          "http_status": 200,
+          "dns_seconds": 0.003639,
+          "tcp_seconds": 0.004016,
+          "tls_seconds": 0.119473,
+          "first_byte_seconds": 0.172174,
+          "total_seconds": 0.175036
+        }
+      ],
+      "discord_gateway_api": [
+        {
+          "curl_exit": 0,
+          "http_status": 200,
+          "dns_seconds": 0.002582,
+          "tcp_seconds": 0.002913,
+          "tls_seconds": 0.414476,
+          "first_byte_seconds": 0.487303,
+          "total_seconds": 0.489496
+        },
+        {
+          "curl_exit": 0,
+          "http_status": 200,
+          "dns_seconds": 0.003281,
+          "tcp_seconds": 0.003679,
+          "tls_seconds": 0.138491,
+          "first_byte_seconds": 0.214999,
+          "total_seconds": 0.217133
+        },
+        {
+          "curl_exit": 0,
+          "http_status": 200,
+          "dns_seconds": 0.002546,
+          "tcp_seconds": 0.002929,
+          "tls_seconds": 0.112494,
+          "first_byte_seconds": 0.178515,
+          "total_seconds": 0.181285
+        }
+      ]
+    },
+    "owned_interface_error_and_drop_counters_zero": true
+  },
+  "owner_reported": {
+    "roblox_real_game_joined_and_remained_connected": true,
+    "discord_bidirectional_audio_worked": true,
+    "pages_worked_while_enabled": true,
+    "initial_page_loading_complaint": "Owner clarified it referred to access after the agent ended the timed trial with Disable."
+  },
+  "resources": {
+    "scope": "Live Automatic setup. Process CPU and RSS only; no traffic contents or private endpoints collected. User traffic was uncontrolled; this is not a strict idle or battery benchmark.",
+    "sample_seconds": 496.17050650000004,
+    "sample_count": 100,
+    "processes": {
+      "MacDPI": {
+        "mean_cpu_percent_one_core": 0.044339596392354276,
+        "first_rss_mib": 96.59375,
+        "last_rss_mib": 89.0625,
+        "peak_rss_mib": 96.796875
+      },
+      "MacDPITUNEngine": {
+        "mean_cpu_percent_one_core": 0.32650066434369973,
+        "first_rss_mib": 18.46875,
+        "last_rss_mib": 27.890625,
+        "peak_rss_mib": 27.890625
+      },
+      "MacDPITUNHelper": {
+        "mean_cpu_percent_one_core": 0.04030872399304935,
+        "first_rss_mib": 9.1875,
+        "last_rss_mib": 8.015625,
+        "peak_rss_mib": 9.21875
+      }
+    },
+    "combined_mean_cpu_percent_one_core": 0.4111489847291034,
+    "combined_peak_rss_mib": 130.328125,
+    "combined_first_rss_mib": 124.25,
+    "combined_last_rss_mib": 124.96875
+  },
+  "disable": {
+    "ui_confirmed_interface_and_route_release": true,
+    "original_engine_exited": true,
+    "original_helper_exited": true,
+    "owner_started_new_session_before_independent_fingerprint_check": true,
+    "unchanged_categories": [
+      "primary-service",
+      "physical-defaults",
+      "dns",
+      "proxies",
+      "service-order"
+    ],
+    "changed_categories": [
+      "interfaces",
+      "protected-prefixes",
+      "network-policy"
+    ],
+    "resolver_snapshot_unchanged": true,
+    "ordinary_https_checks_passed": true,
+    "full_disabled_baseline_comparison": "Inconclusive in this run because a new owner-started TUN session was already active. The earlier 03:30 GUI trial verified all eight fingerprints after Disable."
+  },
+  "new_owner_session": {
+    "active": true,
+    "same_engine_and_helper_after_window_close_reopen": true,
+    "left_enabled_by_owner": true,
+    "agent_resource_monitor_stopped": true
+  },
+  "limits": [
+    "User-reported voice/game success is from one Mac and network; duration, reconnect, loss and voice RTT were not quantified.",
+    "Process CPU/RSS covers 496 seconds with uncontrolled owner traffic, not a strict idle, battery or 30-minute stability benchmark.",
+    "Kernel interface counters do not establish end-to-end packet loss or quantify voice latency.",
+    "No live Intel, macOS 12, IPv6 physical route, sleep/wake, VPN transition or forced-termination test was performed."
+  ]
+}

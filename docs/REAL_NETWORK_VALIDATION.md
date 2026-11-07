@@ -1,5 +1,7 @@
 # Limited real-network validation — 2026-11-04
 
+This historical local-proxy comparison predates Personal TUN. Current GUI activation, owner-reported Discord audio and Roblox gameplay are recorded separately in [0.3.0 verification](TUN_VERIFICATION.md).
+
 The previously missing pieces were traffic routing and DNS filtering. Enable opened only the loopback listener, so an unconfigured Discord application never used the engine. In the tested network, system DNS also returned the same address for Discord and Roblox; connecting there failed normal certificate verification. This observation is consistent with DNS filtering, without attributing it to a specific network operator.
 
 The new optional DNS-over-HTTPS resolver and the existing TLS record splitting were tested together using the production core/CLI, without changing the Mac's DNS, proxy, routing, firewall, VPN or trust settings. No certificate warning was bypassed. No account, login token, private channel or game session was used.

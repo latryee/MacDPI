@@ -1,6 +1,18 @@
 # Compatibility
 
-The 0.3.0 personal build compiles the host, route helper and packet engine for arm64 and x86_64 with a macOS 12.0 deployment target. Isolated TCP and UDP packet tests cover both IP families on Apple Silicon. The real `utun` lifecycle and desktop service compatibility remain pending. The matrix below preserves the evidence for the prior signed-extension and local proxy paths. [Personal TUN evidence](docs/TUN_VERIFICATION.md).
+The 0.3.0 personal build compiles the host, route helper and packet engine for arm64 and x86_64 with a macOS 12.0 deployment target. Isolated TCP and UDP packet tests cover both IP families on Apple Silicon. Real IPv4 activation and Disable were tested on macOS 26.6. [Personal TUN evidence](docs/TUN_VERIFICATION.md).
+
+| Personal TUN capability | Evidence on the development Mac | Remaining scope |
+| --- | --- | --- |
+| Enable and authorization | GUI activation through macOS authorization, real captured public route and verified HTTPS | Intel and macOS 12 runtime |
+| TCP/UDP | IPv4 physical HTTPS; IPv4/IPv6 synthetic integrity, loss and mixed-load fixtures | Physical IPv6, UDP interference, WAN jitter and throughput |
+| Automatic setup | Standard TLS split, ordinary System DNS and selective validated DoH origin repair | Other networks, destinations, ECH and resolver policies |
+| Discord desktop/voice | Owner confirmed bidirectional audio; public API and unauthenticated WSS passed over TUN | Independent voice RTT/loss, extended sessions and reconnect |
+| Roblox gameplay | Owner confirmed joining a real game and remaining connected | Quantified gameplay duration, reconnect and other games/networks |
+| Disable | Helper-confirmed detach, old processes exited; earlier short GUI trial matched all eight baseline fingerprints | Forced termination, sleep/wake and network/VPN switching |
+| Resources | 496 s with owner traffic: 0.41% combined CPU, 130.33 MiB peak RSS | Strict idle, battery and 30-minute stability measurements |
+
+The following matrix preserves the evidence for the **previous Network Extension and local proxy paths**. Their installed system extensions remain separate from Personal TUN.
 
 MacDPI's host and two system extensions target macOS 12.0. The optional web window uses macOS 14 APIs. Launch at login is available from macOS 13. The minimum deployment target is checked at build time. Runtime testing on older systems and Intel hardware remains outstanding.
 
