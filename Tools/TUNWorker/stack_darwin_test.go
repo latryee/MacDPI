@@ -7,9 +7,11 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"net/netip"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -282,22 +284,25 @@ func TestSyntheticTLSOriginRepair(t *testing.T) {
 	defer listener.Close()
 	const tail = "trailing data"
 	first := []byte{22, 3, 1, 0, 4, 1, 2, 3, 4}
-	got := make(chan []byte, 1)
+	got := make(chan []byte, 3)
 	go func() {
-		remote, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		defer remote.Close()
-		_ = remote.SetDeadline(time.Now().Add(5 * time.Second))
-		if payload, err := io.ReadAll(remote); err == nil {
-			got <- payload
-			_, _ = remote.Write([]byte("ok"))
+		for {
+			remote, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_ = remote.SetDeadline(time.Now().Add(5 * time.Second))
+			if payload, err := io.ReadAll(remote); err == nil {
+				got <- payload
+				_, _ = remote.Write([]byte("ok"))
+			}
+			remote.Close()
 		}
 	}()
+	var exchanges atomic.Int32
 	options := stackOptions{
-		profile: 1, encryptedDNS: true,
-		wire: fixturePolicy{transform: func([]byte) []byte { return []byte("split") }},
+		profile: 1,
+		wire:    fixturePolicy{transform: func([]byte) []byte { return []byte("split") }},
 		dial: func(ctx context.Context, protocol string, endpoint netip.AddrPort) (net.Conn, error) {
 			if protocol != "tcp" || endpoint != netip.AddrPortFrom(correct, 443) {
 				t.Errorf("unexpected upstream destination: %s %s", protocol, endpoint)
@@ -305,11 +310,13 @@ func TestSyntheticTLSOriginRepair(t *testing.T) {
 			}
 			return (&net.Dialer{}).DialContext(ctx, "tcp4", listener.Addr().String())
 		},
-		encryptedExchange: func(_ context.Context, query []byte) ([]byte, error) {
+		encryptedExchange: func(_ context.Context, query []byte) (encryptedDNSAnswer, error) {
+			exchanges.Add(1)
+			time.Sleep(60 * time.Millisecond)
 			if string(query) != "question" {
 				t.Errorf("unexpected DNS question: %q", query)
 			}
-			return []byte("answer"), nil
+			return encryptedDNSAnswer{message: []byte("answer"), age: 30}, nil
 		},
 		origin: originRepair{
 			candidates: map[netip.Addr]bool{original: true},
@@ -319,37 +326,44 @@ func TestSyntheticTLSOriginRepair(t *testing.T) {
 				}
 				return []byte("question"), nil
 			},
-			addresses: func(query, answer []byte, ipv4 bool) []netip.Addr {
+			addresses: func(query, answer []byte, ipv4 bool) ([]netip.Addr, uint32) {
 				if !ipv4 || string(query) != "question" || string(answer) != "answer" {
 					t.Errorf("unexpected origin answer: %q %q", query, answer)
 				}
-				return []netip.Addr{correct}
+				return []netip.Addr{correct}, 60
 			},
 		},
 	}
 	ctx := s.attach(t, options)
-	client, err := gonet.DialContextTCP(ctx, s.client, s.remote(443), s.protocol)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.Close()
-	_ = client.SetDeadline(time.Now().Add(5 * time.Second))
-	if _, err := client.Write(append(bytes.Clone(first), tail...)); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.CloseWrite(); err != nil {
-		t.Fatal(err)
-	}
-	if reply, err := io.ReadAll(client); err != nil || string(reply) != "ok" {
-		t.Fatalf("upstream reply failed: %q %v", reply, err)
-	}
-	select {
-	case payload := <-got:
-		if string(payload) != "split"+tail {
-			t.Fatalf("unexpected forwarded bytes: %q", payload)
+	for range 3 {
+		started := time.Now()
+		client, err := gonet.DialContextTCP(ctx, s.client, s.remote(443), s.protocol)
+		if err != nil {
+			t.Fatal(err)
 		}
-	case <-ctx.Done():
-		t.Fatal("upstream did not record the payload")
+		defer client.Close()
+		_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+		if _, err := client.Write(append(bytes.Clone(first), tail...)); err != nil {
+			t.Fatal(err)
+		}
+		if err := client.CloseWrite(); err != nil {
+			t.Fatal(err)
+		}
+		if reply, err := io.ReadAll(client); err != nil || string(reply) != "ok" {
+			t.Fatalf("upstream reply failed: %q %v", reply, err)
+		}
+		t.Logf("repaired TCP connection completed in %v", time.Since(started))
+		select {
+		case payload := <-got:
+			if string(payload) != "split"+tail {
+				t.Fatalf("unexpected forwarded bytes: %q", payload)
+			}
+		case <-ctx.Done():
+			t.Fatal("upstream did not record the payload")
+		}
+	}
+	if got := exchanges.Load(); got != 1 {
+		t.Fatalf("three repaired connections needed %d encrypted lookups, want one", got)
 	}
 }
 
@@ -581,11 +595,11 @@ func TestEncryptedDNSNoPlaintextFallback(t *testing.T) {
 				return nil, errors.New("unexpected dial")
 			},
 			wire: fixturePolicy{dns: dnsEncrypted},
-			encryptedExchange: func(_ context.Context, got []byte) ([]byte, error) {
+			encryptedExchange: func(_ context.Context, got []byte) (encryptedDNSAnswer, error) {
 				if !bytes.Equal(got, query) {
 					t.Error("encrypted request was changed")
 				}
-				return nil, errors.New("injected DoH timeout")
+				return encryptedDNSAnswer{}, errors.New("injected DoH timeout")
 			},
 		})
 		if err != nil {
@@ -595,6 +609,43 @@ func TestEncryptedDNSNoPlaintextFallback(t *testing.T) {
 		worker.close()
 		if len(reply) != len(query) || binary.BigEndian.Uint16(reply) != 0x1234 || reply[3]&15 != 2 {
 			t.Fatalf("expected matching SERVFAIL, got %x", reply)
+		}
+	}
+}
+
+type dohFixtureTransport http.Header
+
+func (headers dohFixtureTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header(headers),
+		Body:       io.NopCloser(bytes.NewReader(make([]byte, 12))),
+	}, nil
+}
+
+func TestEncryptedDNSCacheLifetimeRespectsHTTPMetadata(t *testing.T) {
+	for _, trial := range []struct {
+		age          string
+		cacheControl string
+		want         time.Duration
+	}{
+		{"5", "public, max-age=15", 10 * time.Second},
+		{"5", "max-age=3600", 55 * time.Second},
+		{"30", "max-age=15", 0},
+		{"5", "max-age=15, no-store", 0},
+		{"invalid", "max-age=15", 0},
+	} {
+		client := &http.Client{Transport: dohFixtureTransport{
+			"Content-Type":  {"application/dns-message"},
+			"Age":           {trial.age},
+			"Cache-Control": {trial.cacheControl},
+		}}
+		answer, err := exchangeDoH(context.Background(), client, make([]byte, 12))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if lifetime := answer.cacheLifetime(60); lifetime != trial.want {
+			t.Errorf("Age %q, Cache-Control %q: lifetime %v, want %v", trial.age, trial.cacheControl, lifetime, trial.want)
 		}
 	}
 }

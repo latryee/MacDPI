@@ -38,6 +38,6 @@ int32_t macdpi_tls_origin_query(const uint8_t *record, int32_t length, uint16_t 
 // of the requested family, or a negative result on failure.
 int32_t macdpi_tls_origin_addresses(const uint8_t *query, int32_t query_length,
                                    const uint8_t *response, int32_t response_length,
-                                   uint8_t *output, int32_t capacity);
+                                   uint8_t *output, int32_t capacity, uint32_t *ttl);
 
 #endif

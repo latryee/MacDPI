@@ -131,12 +131,12 @@ def trial(check_discord, repair_origin):
         discord_gateway('Before Enable', discord_address)
     print('One temporary TUN interface and its public routes will be created. System DNS settings will stay as found.', flush=True)
     if repair_origin:
-        print('The engine will also test eligible TLS names using Cloudflare DoH.', flush=True)
+        print('The engine will use Cloudflare DoH for eligible TLS origin checks and keep ordinary DNS on the system path.', flush=True)
     print('If macOS asks for a password, type it only in Terminal. Ctrl-C requests shutdown.', flush=True)
     run(['/usr/bin/sudo', '-v'], 120)
 
     session = str(uuid.uuid4())
-    engine_args = [HELPERS / 'MacDPITUNEngine', session, '1', '32', '1' if repair_origin else '0', '']
+    engine_args = [HELPERS / 'MacDPITUNEngine', session, '1', '32', '0', '']
     if repair_origin:
         engine_args.append('1')
     engine = subprocess.Popen(engine_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)

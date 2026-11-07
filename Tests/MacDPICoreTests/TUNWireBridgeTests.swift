@@ -26,23 +26,27 @@ final class TUNWireBridgeTests: XCTestCase {
         var response = query
         response[2] = 0x81; response[3] = 0x80; response[7] = 1
         response.append(contentsOf: [0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 1, 1, 1, 1])
-        func addresses(_ reply: Data) -> (Int32, Data) {
+        func addresses(_ reply: Data) -> (Int32, Data, UInt32) {
             var output = Data(repeating: 0, count: 16)
+            var ttl: UInt32 = .max
             let count = query.withUnsafeBytes { question in
                 reply.withUnsafeBytes { answer in
                     output.withUnsafeMutableBytes { result in
                         macdpiTLSOriginAddresses(question.bindMemory(to: UInt8.self).baseAddress, Int32(query.count),
                                                  answer.bindMemory(to: UInt8.self).baseAddress, Int32(reply.count),
-                                                 result.bindMemory(to: UInt8.self).baseAddress, 16)
+                                                 result.bindMemory(to: UInt8.self).baseAddress, 16, &ttl)
                     }
                 }
             }
-            return (count, output.prefix(max(0, Int(count))))
+            return (count, output.prefix(max(0, Int(count))), ttl)
         }
-        XCTAssertEqual(addresses(response).1, Data([1, 1, 1, 1]))
+        let result = addresses(response)
+        XCTAssertEqual(result.1, Data([1, 1, 1, 1]))
+        XCTAssertEqual(result.2, 60)
         var privateReply = response
         privateReply.replaceSubrange((privateReply.count-4)..<privateReply.count, with: [192, 168, 0, 1])
         XCTAssertEqual(addresses(privateReply).0, -1)
+        XCTAssertEqual(addresses(privateReply).2, 0)
         response[1] = 1
         XCTAssertEqual(addresses(response).0, -1)
     }

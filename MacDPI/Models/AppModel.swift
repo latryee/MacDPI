@@ -28,7 +28,6 @@ enum IntegrationConsent: String, Identifiable {
 protocol PersonalTUNControlling: AnyObject {
     var phase: PersonalTUNPhase { get }
     var detail: String { get }
-    var authorizationCommand: String? { get }
     var recoveryCommand: String? { get }
     var changed: (() -> Void)? { get set }
     func start(_ configuration: Configuration)
@@ -86,6 +85,12 @@ final class AppModel: ObservableObject {
     var availableIntegrationModes: [TrafficIntegrationMode] {
         personalTUNAvailable ? [.personalTUN, .localProxy] : [.localProxy, .transparent]
     }
+    var usesAutomaticTUNConfiguration: Bool {
+        integrationMode == .personalTUN && configuration.tunAutomaticConfiguration
+    }
+    var effectiveConfiguration: Configuration {
+        integrationMode == .personalTUN ? configuration.personalTUNConfiguration : configuration
+    }
     var isEnabled: Bool {
         switch integrationMode {
         case .personalTUN: return personalTUNPhase == .active
@@ -100,7 +105,6 @@ final class AppModel: ObservableObject {
         if integrationMode == .personalTUN && [.stopping, .restoring].contains(personalTUNPhase) { return "Stopping" }
         return busy ? "Cancel" : isEnabled ? "Disable" : "Enable"
     }
-    var authorizationCommand: String? { integrationMode == .personalTUN ? personalTUN.authorizationCommand : nil }
     var recoveryCommand: String? {
         integrationMode == .personalTUN && personalTUNPhase == .recovery ? personalTUN.recoveryCommand : nil
     }
@@ -206,11 +210,12 @@ final class AppModel: ObservableObject {
     func enable() {
         guard !busy else { return }
         if integrationMode == .personalTUN {
-            do { _ = try configuration.validated() } catch { self.error = error.localizedDescription; return }
+            let selected = effectiveConfiguration
+            do { _ = try selected.validated() } catch { self.error = error.localizedDescription; return }
             error = nil
             snapshot = Snapshot()
             store.save(configuration)
-            personalTUN.start(configuration)
+            personalTUN.start(selected)
             return
         }
         if integrationMode == .transparent {
@@ -301,7 +306,7 @@ final class AppModel: ObservableObject {
     func checkReadiness() {
         if integrationMode == .personalTUN {
             do {
-                _ = try configuration.validated()
+                _ = try effectiveConfiguration.validated()
                 updateTUNDiagnostics()
             } catch { diagnostics = error.localizedDescription }
             return
@@ -324,13 +329,13 @@ final class AppModel: ObservableObject {
     }
     private func updateTUNDiagnostics() {
         let elapsed = tunActiveSince.map { "\(max(0, Int(Date().timeIntervalSince($0)))) seconds" } ?? "unavailable"
-        diagnostics = "Personal TUN · \(statusTitle)\n\(statusDetail)\nDNS option · \(configuration.dnsMode.title)\nSession duration · \(elapsed)\nAggregate traffic and resource measurements are unavailable here.\nDiscord voice and Roblox gameplay require an approved live test."
+        let dns = usesAutomaticTUNConfiguration ? "System DNS with selective TLS repair" : effectiveConfiguration.dnsMode.title
+        diagnostics = "Personal TUN · \(statusTitle)\n\(statusDetail)\nDNS option · \(dns)\nSession duration · \(elapsed)\nAggregate traffic and resource measurements are unavailable here.\nDiscord voice and Roblox gameplay require an approved live test."
     }
     func refreshRoutingStatus() {
         if integrationMode == .transparent { integration.refresh() }
         else if integrationMode == .localProxy { systemProxyLinked = ProxyRoutingStatus.systemHTTPSProxyMatches(port: configuration.port) }
     }
-    func copyTUNAuthorizationCommand() { copyCommand(authorizationCommand) }
     func copyTUNRecoveryCommand() { copyCommand(recoveryCommand) }
     private func copyCommand(_ command: String?) {
         guard let command else { return }
@@ -496,7 +501,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func emergencyStop() { model?.emergencyStop() }
     @objc private func toggleEngine() {
         model?.toggle()
-        if model?.pendingConsent != nil || model?.authorizationCommand != nil || model?.recoveryCommand != nil { showWindow() }
+        if model?.pendingConsent != nil || model?.personalTUNPhase == .authorization || model?.recoveryCommand != nil { showWindow() }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let model else { return .terminateNow }

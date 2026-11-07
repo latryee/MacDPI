@@ -26,6 +26,7 @@ public struct Configuration: Codable, Equatable, Sendable {
     public var dnsMode: DNSMode = .system
     /// Explicit split-DNS exceptions for the approved DNS provider, in addition to OS-supplied domains.
     public var dnsBypassDomains: [String] = []
+    public var tunAutomaticConfiguration = true
     public var tunTLSOriginRepair = false
     public var splitOffset: Int = 32
     public var maxConnections: Int = 64
@@ -37,7 +38,7 @@ public struct Configuration: Codable, Equatable, Sendable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case port, profile, dnsMode, dnsBypassDomains, tunTLSOriginRepair, splitOffset, maxConnections, handshakeTimeout, idleTimeout, allowLoopbackForTesting, allowedPorts
+        case port, profile, dnsMode, dnsBypassDomains, tunAutomaticConfiguration, tunTLSOriginRepair, splitOffset, maxConnections, handshakeTimeout, idleTimeout, allowLoopbackForTesting, allowedPorts
     }
     public init(from decoder: Decoder) throws {
         self.init()
@@ -46,6 +47,7 @@ public struct Configuration: Codable, Equatable, Sendable {
         profile = try c.decodeIfPresent(Profile.self, forKey: .profile) ?? profile
         dnsMode = try c.decodeIfPresent(DNSMode.self, forKey: .dnsMode) ?? dnsMode
         dnsBypassDomains = try c.decodeIfPresent([String].self, forKey: .dnsBypassDomains) ?? dnsBypassDomains
+        tunAutomaticConfiguration = try c.decodeIfPresent(Bool.self, forKey: .tunAutomaticConfiguration) ?? tunAutomaticConfiguration
         tunTLSOriginRepair = try c.decodeIfPresent(Bool.self, forKey: .tunTLSOriginRepair) ?? tunTLSOriginRepair
         splitOffset = try c.decodeIfPresent(Int.self, forKey: .splitOffset) ?? splitOffset
         maxConnections = try c.decodeIfPresent(Int.self, forKey: .maxConnections) ?? maxConnections
@@ -53,6 +55,15 @@ public struct Configuration: Codable, Equatable, Sendable {
         idleTimeout = try c.decodeIfPresent(Double.self, forKey: .idleTimeout) ?? idleTimeout
         allowLoopbackForTesting = try c.decodeIfPresent(Bool.self, forKey: .allowLoopbackForTesting) ?? allowLoopbackForTesting
         allowedPorts = try c.decodeIfPresent([UInt16].self, forKey: .allowedPorts) ?? allowedPorts
+    }
+
+    public var personalTUNConfiguration: Configuration {
+        guard tunAutomaticConfiguration else { return self }
+        var selected = self
+        selected.profile = .standard
+        selected.dnsMode = .system
+        selected.tunTLSOriginRepair = true
+        return selected
     }
 
     public func validated() throws -> Configuration {

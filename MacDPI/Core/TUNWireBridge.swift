@@ -101,7 +101,9 @@ public func macdpiTLSOriginQuery(_ record: UnsafePointer<UInt8>?, _ length: Int3
 @_cdecl("macdpi_tls_origin_addresses")
 public func macdpiTLSOriginAddresses(_ query: UnsafePointer<UInt8>?, _ queryLength: Int32,
                                     _ response: UnsafePointer<UInt8>?, _ responseLength: Int32,
-                                    _ output: UnsafeMutablePointer<UInt8>?, _ capacity: Int32) -> Int32 {
+                                    _ output: UnsafeMutablePointer<UInt8>?, _ capacity: Int32,
+                                    _ ttl: UnsafeMutablePointer<UInt32>?) -> Int32 {
+    ttl?.pointee = 0
     guard let bytes = wireInput(query, length: queryLength, maximum: 272),
           let question = try? DNSPacket(bytes, response: false), question.identifier == 0,
           question.type == 1 || question.type == 28,
@@ -112,5 +114,7 @@ public func macdpiTLSOriginAddresses(_ query: UnsafePointer<UInt8>?, _ queryLeng
     let bits = question.type == 1 ? 32 : 128
     let addresses = answer.addresses.compactMap { TUNCIDR("\($0)/\(bits)")?.bytes }
     guard !addresses.isEmpty, addresses.count == answer.addresses.count else { return -1 }
-    return writeWireOutput(Data(addresses.flatMap { $0 }), to: output, capacity: capacity)
+    let count = writeWireOutput(Data(addresses.flatMap { $0 }), to: output, capacity: capacity)
+    if count > 0 { ttl?.pointee = answer.ttl }
+    return count
 }

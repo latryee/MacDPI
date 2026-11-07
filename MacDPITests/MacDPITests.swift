@@ -22,7 +22,6 @@ private final class FakeEngine: EngineControlling {
 private final class FakePersonalTUN: PersonalTUNControlling {
     var phase: PersonalTUNPhase = .disabled
     var detail = "Fixture status"
-    var authorizationCommand: String? { phase == .authorization ? "fixture authorization" : nil }
     let recoveryCommand: String? = "fixture recovery"
     var changed: (() -> Void)?
     var configuration: Configuration?
@@ -50,9 +49,13 @@ final class MacDPITests: XCTestCase {
         let tun = FakePersonalTUN(), proxy = FakeEngine()
         let model = AppModel(engine: proxy, store: MemoryConfigurationStore(), mode: .personalTUN, personalTUNController: tun)
         model.configuration.dnsMode = .cloudflare
+        model.configuration.profile = .compatibility
         model.enable()
-        XCTAssertEqual(model.authorizationCommand, "fixture authorization")
-        XCTAssertEqual(tun.configuration?.dnsMode, .cloudflare)
+        XCTAssertEqual(model.personalTUNPhase, .authorization)
+        XCTAssertEqual(tun.configuration?.dnsMode, .system)
+        XCTAssertEqual(tun.configuration?.profile, .standard)
+        XCTAssertEqual(tun.configuration?.tunTLSOriginRepair, true)
+        XCTAssertEqual(model.configuration.profile, .compatibility)
         XCTAssertFalse(model.isEnabled)
         tun.setPhase(.configuring)
         XCTAssertFalse(model.isEnabled)

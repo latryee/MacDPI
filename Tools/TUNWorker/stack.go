@@ -43,7 +43,7 @@ type stackOptions struct {
 	encryptedDNS      bool
 	dial              dialFlow
 	wire              wirePolicy
-	encryptedExchange func(context.Context, []byte) ([]byte, error)
+	encryptedExchange func(context.Context, []byte) (encryptedDNSAnswer, error)
 	closeEncrypted    func()
 	origin            originRepair
 }
@@ -54,6 +54,7 @@ type tunnelStack struct {
 	stack   *stack.Stack
 	link    *channel.Endpoint
 	options stackOptions
+	origins originCache
 
 	mu       sync.Mutex
 	closed   bool
@@ -65,7 +66,7 @@ type tunnelStack struct {
 func newTunnel(parent context.Context, options stackOptions) (*tunnelStack, error) {
 	if options.dial == nil || options.wire == nil ||
 		(options.encryptedDNS && options.encryptedExchange == nil) ||
-		(len(options.origin.candidates) != 0 && (!options.encryptedDNS ||
+		(len(options.origin.candidates) != 0 && (options.encryptedExchange == nil ||
 			options.origin.question == nil || options.origin.addresses == nil)) {
 		return nil, errors.New("tunnel configuration incomplete")
 	}

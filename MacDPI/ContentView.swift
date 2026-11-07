@@ -76,10 +76,12 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if model.integrationMode == .personalTUN {
                         Text("Personal TUN forwards supported public TCP and UDP through a local interface. Private networks and existing network policies stay outside its route plan.")
-                        if model.authorizationCommand != nil {
-                            Button("Copy administrator command") { model.copyTUNAuthorizationCommand() }
-                                .accessibilityIdentifier("tun-copy-authorization")
-                            Text("Review and run the command in Terminal to authorize this session. Enter your administrator password only in Terminal.")
+                        if model.usesAutomaticTUNConfiguration {
+                            Text("Automatic setup uses System DNS and looks up eligible Discord or Roblox names with Cloudflare only when a TLS connection needs repair.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if model.personalTUNPhase == .authorization {
+                            Text("Approve the system dialog to start the tunnel for this session.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if model.recoveryCommand != nil {
@@ -116,8 +118,8 @@ struct ContentView: View {
             }
             GroupBox {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack { Text("CURRENT PROFILE").font(.caption.weight(.semibold)).foregroundStyle(.secondary); Spacer(); Text(model.configuration.profile.title).font(.headline) }
-                    Text(model.configuration.profile.detail).font(.callout).foregroundStyle(.secondary)
+                    HStack { Text("CURRENT PROFILE").font(.caption.weight(.semibold)).foregroundStyle(.secondary); Spacer(); Text(model.usesAutomaticTUNConfiguration ? "Automatic" : model.effectiveConfiguration.profile.title).font(.headline) }
+                    Text(model.effectiveConfiguration.profile.detail).font(.callout).foregroundStyle(.secondary)
                     Divider()
                     Label("Effectiveness depends on the site, network and application", systemImage: "info.circle").font(.caption)
                 }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
@@ -140,22 +142,31 @@ struct ContentView: View {
             GroupBox("Connection") {
                 VStack(alignment: .leading, spacing: 16) {
                     Picker("Operation", selection: $model.integrationMode) { ForEach(model.availableIntegrationModes) { Text($0.title).tag($0) } }.accessibilityIdentifier("integration-mode")
-                    Picker("Profile", selection: $model.configuration.profile) { ForEach(Profile.allCases) { Text($0.title).tag($0) } }
-                    Picker("DNS", selection: $model.configuration.dnsMode) { ForEach(DNSMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("dns-mode")
-                    Text(model.integrationMode == .personalTUN
-                         ? "Cloudflare receives eligible captured DNS queries over HTTPS. Private resolvers and split domains keep their original path. If eligible encrypted DNS fails, those queries fail."
-                         : "Cloudflare receives selected DNS names over HTTPS. Local diagnostics changes only the proxy resolver. Signed extension mode requires separate DNS authorization.").font(.caption).foregroundStyle(.secondary)
+                    if model.integrationMode == .personalTUN {
+                        Toggle("Automatic setup", isOn: $model.configuration.tunAutomaticConfiguration)
+                            .accessibilityIdentifier("tun-automatic-setup")
+                    }
+                    if !model.usesAutomaticTUNConfiguration {
+                        Picker("Profile", selection: $model.configuration.profile) { ForEach(Profile.allCases) { Text($0.title).tag($0) } }
+                        Picker("DNS", selection: $model.configuration.dnsMode) { ForEach(DNSMode.allCases) { Text($0.title).tag($0) } }.accessibilityIdentifier("dns-mode")
+                        Text(model.integrationMode == .personalTUN
+                             ? "Cloudflare receives eligible captured DNS queries over HTTPS. Private resolvers and split domains keep their original path. If eligible encrypted DNS fails, those queries fail."
+                             : "Cloudflare receives selected DNS names over HTTPS. Local diagnostics changes only the proxy resolver. Signed extension mode requires separate DNS authorization.").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Uses Standard with System DNS. Cloudflare receives eligible TLS names only when a suspected DNS answer needs repair.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     if model.integrationMode != .localProxy {
                         TextField("Additional split-DNS domains (comma separated)", text: Binding(get: { model.configuration.dnsBypassDomains.joined(separator: ", ") }, set: { model.configuration.dnsBypassDomains = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty } }))
                     }
-                    if model.integrationMode == .personalTUN && model.configuration.dnsMode == .cloudflare && model.configuration.profile != .compatibility {
+                    if model.integrationMode == .personalTUN && !model.usesAutomaticTUNConfiguration && model.configuration.profile != .compatibility {
                         Toggle("Repair suspected Discord and Roblox DNS answers for TLS", isOn: $model.configuration.tunTLSOriginRepair)
                         Text("When service names share a single system DNS address, MacDPI can resolve eligible visible TLS names through Cloudflare. Split DNS and UDP keep their existing paths.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Text(model.configuration.profile.detail).font(.caption).foregroundStyle(.secondary)
+                    Text(model.effectiveConfiguration.profile.detail).font(.caption).foregroundStyle(.secondary)
                     if model.integrationMode == .localProxy { TextField("Local port (1024–65535)", value: $model.configuration.port, formatter: NumberFormatter()).accessibilityIdentifier("proxy-port") }
-                    if model.configuration.profile == .advanced {
+                    if model.effectiveConfiguration.profile == .advanced {
                         Stepper("Split offset: \(model.configuration.splitOffset) bytes", value: $model.configuration.splitOffset, in: 1...16_000)
                     }
                     if model.integrationMode != .personalTUN {

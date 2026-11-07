@@ -38,6 +38,20 @@ final class CoreTests: XCTestCase {
         bad = c; bad.allowedPorts = []; XCTAssertThrowsError(try bad.validated())
         bad = c; bad.idleTimeout = .infinity; XCTAssertThrowsError(try bad.validated())
     }
+    func testPersonalTUNAutomaticSetupKeepsOrdinaryDNSAndPreservesManualPreferences() {
+        var saved = Configuration()
+        saved.profile = .advanced
+        saved.dnsMode = .cloudflare
+        saved.dnsBypassDomains = ["corp.example"]
+        let effective = saved.personalTUNConfiguration
+        XCTAssertEqual(effective.profile, .standard)
+        XCTAssertEqual(effective.dnsMode, .system)
+        XCTAssertTrue(effective.tunTLSOriginRepair)
+        XCTAssertEqual(effective.dnsBypassDomains, ["corp.example"])
+        XCTAssertEqual(saved.profile, .advanced)
+        saved.tunAutomaticConfiguration = false
+        XCTAssertEqual(saved.personalTUNConfiguration, saved)
+    }
     func testCONNECTParsingAndIPv6() throws {
         XCTAssertNil(try ConnectRequest.parse(Data("CONNECT example.com:443 HTTP/1.1\r\n".utf8)))
         let r = try XCTUnwrap(ConnectRequest.parse(Data("CONNECT example.com:443 HTTP/1.1\r\nHost: example.com\r\n\r\ntrailing".utf8)))

@@ -76,26 +76,27 @@ func (p swiftWire) originQuestion(record []byte, ipv4 bool) ([]byte, error) {
 	return output[:n], nil
 }
 
-func (p swiftWire) originAddresses(query, reply []byte, ipv4 bool) []netip.Addr {
+func (p swiftWire) originAddresses(query, reply []byte, ipv4 bool) ([]netip.Addr, uint32) {
 	output := make([]byte, 16*16)
+	var ttl C.uint32_t
 	n := int(C.macdpi_tls_origin_addresses(borrowed(query), C.int32_t(len(query)),
-		borrowed(reply), C.int32_t(len(reply)), borrowed(output), C.int32_t(len(output))))
+		borrowed(reply), C.int32_t(len(reply)), borrowed(output), C.int32_t(len(output)), &ttl))
 	width := 16
 	if ipv4 {
 		width = 4
 	}
 	if n <= 0 || n > len(output) || n%width != 0 {
-		return nil
+		return nil, 0
 	}
 	addresses := make([]netip.Addr, 0, n/width)
 	for i := 0; i < n; i += width {
 		address, ok := netip.AddrFromSlice(output[i : i+width])
 		if !ok || !publicEgress(address) {
-			return nil
+			return nil, 0
 		}
 		addresses = append(addresses, address)
 	}
-	return addresses
+	return addresses, uint32(ttl)
 }
 
 //export macdpi_tun_run
@@ -115,7 +116,7 @@ func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffse
 	}()
 	if ipv4Index < 0 || ipv6Index < 0 || ipv4Index == 0 && ipv6Index == 0 ||
 		profile < 0 || profile > 2 || splitOffset < 1 || splitOffset > 16_000 ||
-		doh < 0 || doh > 1 || (repair != 0 && (repair != 1 || doh != 1 || profile == 0)) ||
+		doh < 0 || doh > 1 || (repair != 0 && (repair != 1 || profile == 0)) ||
 		domainsLen < 0 || domainsLen > maxDNSMessage ||
 		domainsLen != 0 && domains == nil {
 		return 2
@@ -154,9 +155,9 @@ func macdpi_tun_run(packetFD, leaseFD, ipv4Index, ipv6Index, profile, splitOffse
 	options := stackOptions{
 		profile: int(profile), encryptedDNS: doh == 1, dial: dial, wire: wire,
 	}
-	if options.encryptedDNS {
+	if options.encryptedDNS || repair == 1 {
 		client, closeIdle := newDoH(dial, ipv4Index != 0)
-		options.encryptedExchange = func(ctx context.Context, query []byte) ([]byte, error) {
+		options.encryptedExchange = func(ctx context.Context, query []byte) (encryptedDNSAnswer, error) {
 			return exchangeDoH(ctx, client, query)
 		}
 		options.closeEncrypted = closeIdle

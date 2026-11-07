@@ -20,6 +20,8 @@ final class PersonalTUNController {
     static var bundled: Bool { Bundle.main.object(forInfoDictionaryKey: "MacDPIPersonalTUN") as? Bool == true }
 
     private var process: Process?
+    private var authorization: Process?
+    private var authorizationError: String?
     private var input: Pipe?
     private var output: Pipe?
     private var pending = Data()
@@ -30,8 +32,7 @@ final class PersonalTUNController {
     private var stopTimeout: Task<Void, Never>?
     private let allowed: Bool
     private(set) var phase: PersonalTUNPhase = .disabled
-    private(set) var detail = "Enable prepares a local tunnel session. Start the session helper in Terminal after reviewing the administrator command."
-    private(set) var authorizationCommand: String?
+    private(set) var detail = "Enable starts a local tunnel after macOS administrator authorization."
     var changed: (() -> Void)?
 
     init(allowed: Bool) { self.allowed = allowed }
@@ -53,10 +54,17 @@ final class PersonalTUNController {
             publish(.failed, "This application bundle is missing its TUN components."); return
         }
         let session = UUID().uuidString.lowercased()
+        let launcher: Process
+        do {
+            launcher = try PersonalTUNAuthorization.launcher(helper: helper, engine: engine, session: session)
+        } catch {
+            publish(.failed, "The app could not verify its signed tunnel components. Rebuild or replace this copy of MacDPI.")
+            return
+        }
         // Keep the numeric contract in IntegrationSupport/TUNWireBridge.h.
         let profile = configuration.profile == .compatibility ? 0 : configuration.profile == .advanced ? 2 : 1
         let child = Process(), commands = Pipe(), statuses = Pipe()
-        let repair = configuration.tunTLSOriginRepair && configuration.dnsMode == .cloudflare && profile != 0
+        let repair = configuration.tunTLSOriginRepair && profile != 0
         child.executableURL = engine
         child.arguments = [session, String(profile), String(configuration.splitOffset), configuration.dnsMode == .cloudflare ? "1" : "0",
                            configuration.dnsBypassDomains.joined(separator: "\n"), repair ? "1" : "0"]
@@ -65,7 +73,7 @@ final class PersonalTUNController {
         child.standardError = FileHandle.nullDevice
         process = child; input = commands; output = statuses
         pending.removeAll(keepingCapacity: true)
-        statusVerified = false; mayHaveRoutes = false; wasActive = false
+        statusVerified = false; mayHaveRoutes = false; wasActive = false; authorizationError = nil
         publish(.starting, "Starting the unprivileged traffic engine.")
         // A single serial reader preserves status ordering through EOF. The child reports only
         // bounded fixed vocabulary and closes this pipe on every exit.
@@ -78,8 +86,8 @@ final class PersonalTUNController {
             try child.run()
             try? statuses.fileHandleForWriting.close()
             try? commands.fileHandleForReading.close()
-            authorizationCommand = "/usr/bin/sudo -- \(quoted(helper.path)) run \(session)"
-            publish(.authorization, "Run the session command in Terminal within 90 seconds. macOS handles the administrator password.")
+            publish(.authorization, "Approve the MacDPI request in the macOS administrator dialog.")
+            launchAuthorization(launcher)
         } catch {
             finish(.failed, "The TUN engine could not start.")
         }
@@ -89,7 +97,7 @@ final class PersonalTUNController {
         guard process != nil else { completion?(phase != .recovery); return }
         if let completion { completions.append(completion) }
         guard phase != .stopping && phase != .restoring else { return }
-        authorizationCommand = nil
+        if !mayHaveRoutes, authorization?.isRunning == true { authorization?.terminate() }
         publish(.stopping, "Closing TCP and UDP sessions.")
         // EOF is the authenticated stop signal. It also handles a UI process crash.
         try? input?.fileHandleForWriting.close()
@@ -100,6 +108,35 @@ final class PersonalTUNController {
             self.process?.terminate()
             self.finish(.recovery, "No cleanup acknowledgement arrived. Run the recovery check before enabling again.")
         }
+    }
+
+    private func launchAuthorization(_ launcher: Process) {
+        let result = Pipe()
+        launcher.standardOutput = result
+        authorization = launcher
+        launcher.terminationHandler = { [weak self] task in
+            DispatchQueue.main.async { [weak self] in
+                let output = result.fileHandleForReading.readDataToEndOfFile()
+                let cancelled = String(decoding: output, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines) == "CANCELLED"
+                self?.authorizationFinished(task, cancelled: cancelled)
+            }
+        }
+        do {
+            try launcher.run()
+            try? result.fileHandleForWriting.close()
+        } catch {
+            authorizationFinished(launcher, cancelled: false)
+        }
+    }
+
+    private func authorizationFinished(_ launcher: Process, cancelled: Bool) {
+        guard authorization === launcher else { return }
+        authorization = nil
+        guard phase == .authorization else { return }
+        if !cancelled {
+            authorizationError = "macOS did not start the verified tunnel helper. Check administrator access and retry."
+        }
+        stop()
     }
 
     private func consume(_ bytes: Data, from child: Process) {
@@ -121,25 +158,28 @@ final class PersonalTUNController {
             pending.removeSubrange(...end)
             switch line {
             case "CONFIGURING":
-                mayHaveRoutes = true; authorizationCommand = nil
+                mayHaveRoutes = true
                 if phase != .stopping { publish(.configuring, "The engine is starting and the helper is checking routing.") }
             case "ACTIVE":
-                mayHaveRoutes = true; wasActive = true; authorizationCommand = nil
+                mayHaveRoutes = true; wasActive = true
                 if phase != .stopping { publish(.active, "The engine is running and the helper verified the installed TUN routes.") }
             case "RESTORING": publish(.restoring, "Waiting for macOS to detach the tunnel and release its routes.")
             case "DISABLED": statusVerified = true; publish(.disabled, "The helper verified that its interface and routes are gone.")
-            case "CANCELLED": statusVerified = true; publish(.disabled, "The authorization request was cancelled before routing started.")
+            case "CANCELLED":
+                statusVerified = true
+                if let authorizationError { publish(.failed, authorizationError) }
+                else { publish(.disabled, "The authorization request was cancelled before routing started.") }
             case "AUTHORIZATION_TIMEOUT":
-                authorizationCommand = nil; statusVerified = true
-                publish(.failed, "No authorized helper connected within 90 seconds. Press Enable and run the new command in Terminal.")
+                statusVerified = true
+                publish(.failed, "No authorized helper connected within 90 seconds. Press Enable and approve the new macOS dialog.")
             case "HELPER_CONNECTION_FAILED":
-                authorizationCommand = nil; statusVerified = true
-                publish(.failed, "The traffic engine could not connect to the session helper. Check Terminal for the helper error and retry.")
+                statusVerified = true
+                publish(.failed, "The traffic engine could not connect to the session helper. Retry the authorization request.")
             case "FAILED": statusVerified = !mayHaveRoutes; publish(.failed, "The traffic engine could not start. Review the selected DNS settings and retry.")
             case "FAILED_CLEAN":
                 statusVerified = true
                 let failure = wasActive ? "The helper stopped the active tunnel." : "The helper could not finish configuring the tunnel."
-                publish(.failed, failure + " Route cleanup was verified. See Terminal for details.")
+                publish(.failed, failure + " Route cleanup was verified.")
             case "RECOVERY_REQUIRED": statusVerified = true; publish(.recovery, "Route cleanup could not be verified. Run the recovery check.")
             default: stop(); return
             }
@@ -149,7 +189,8 @@ final class PersonalTUNController {
     private func finish(_ phase: PersonalTUNPhase, _ detail: String) {
         output?.fileHandleForReading.readabilityHandler = nil
         try? output?.fileHandleForReading.close(); try? input?.fileHandleForWriting.close()
-        process = nil; input = nil; output = nil; authorizationCommand = nil
+        if !mayHaveRoutes, authorization?.isRunning == true { authorization?.terminate() }
+        process = nil; input = nil; output = nil; authorization = nil; authorizationError = nil
         stopTimeout?.cancel(); stopTimeout = nil
         let callbacks = completions
         completions.removeAll()

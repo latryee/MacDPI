@@ -21,8 +21,6 @@ private final class SignalLatch: @unchecked Sendable {
 
 private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
     let backend = DarwinRouteBackend()
-    let transaction = TUNRouteTransaction(backend: backend, store: try journal())
-    try transaction.auditRecovery()
     let listener = identifier.withCString { macdpi_tun_broker_listen($0, uid) }
     guard listener >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
     defer { close(listener); _ = identifier.withCString { macdpi_tun_broker_unlink($0, uid) } }
@@ -46,6 +44,8 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
     var lease: TUNRouteLease?
     var final: UInt8 = 70 // F means the broker could not verify cleanup.
     defer { _ = macdpi_tun_control_send(peer, final) }
+    let transaction = TUNRouteTransaction(backend: backend, store: try journal())
+    try transaction.auditRecovery()
 
     func engineIsReady() -> Bool {
         guard !interrupt.isStopped, !drained else { return false }
@@ -116,19 +116,34 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
 }
 
 do {
-    guard geteuid() == 0, let caller = ProcessInfo.processInfo.environment["SUDO_UID"],
-          let uid = uid_t(caller), uid > 0 else { throw POSIXError(.EPERM) }
+    guard geteuid() == 0 else { throw POSIXError(.EPERM) }
+    let sudoUID = ProcessInfo.processInfo.environment["SUDO_UID"].flatMap { uid_t($0) }
     let arguments = Array(CommandLine.arguments.dropFirst())
     if arguments == ["recover"] {
+        guard let sudoUID, sudoUID > 0 else { throw POSIXError(.EPERM) }
         let transaction = TUNRouteTransaction(backend: DarwinRouteBackend(), store: try journal())
         try transaction.auditRecovery()
         print("MacDPI recovery check passed. No recorded tunnel remains.")
-    } else if arguments.count == 2, arguments[0] == "run", let identifier = UUID(uuidString: arguments[1]),
-              identifier.uuidString.lowercased() == arguments[1] {
+    } else {
+        guard (2...3).contains(arguments.count),
+              let identifier = UUID(uuidString: arguments[1]), identifier.uuidString.lowercased() == arguments[1] else {
+            throw POSIXError(.EINVAL)
+        }
+        let uid: uid_t
+        switch (arguments[0], arguments.count) {
+        case ("run", 2):
+            guard let sudoUID, sudoUID > 0 else { throw POSIXError(.EPERM) }
+            uid = sudoUID
+        case ("run-as", 3):
+            guard let requester = uid_t(arguments[2]), requester > 0, requester != .max,
+                  String(requester) == arguments[2] else { throw POSIXError(.EINVAL) }
+            uid = requester
+        default: throw POSIXError(.EINVAL)
+        }
         let ownPath = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
         let worker = ownPath.deletingLastPathComponent().appendingPathComponent("MacDPITUNEngine")
         try session(arguments[1], uid: uid, worker: worker)
-    } else { throw POSIXError(.EINVAL) }
+    }
 } catch {
     fputs("MacDPI helper did not complete. Check the application status or run the documented recovery check.\n", stderr)
     exit(1)

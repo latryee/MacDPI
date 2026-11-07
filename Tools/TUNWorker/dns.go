@@ -11,6 +11,8 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -56,29 +58,74 @@ func newDoH(dial dialFlow, ipv4Available bool) (*http.Client, func()) {
 	return client, transport.CloseIdleConnections
 }
 
-func exchangeDoH(ctx context.Context, client *http.Client, query []byte) ([]byte, error) {
+type encryptedDNSAnswer struct {
+	message []byte
+	age     uint32
+	maxAge  *uint32
+	noCache bool
+}
+
+func (answer encryptedDNSAnswer) cacheLifetime(ttl uint32) time.Duration {
+	if answer.maxAge != nil {
+		ttl = min(ttl, *answer.maxAge)
+	}
+	if answer.noCache || ttl <= answer.age {
+		return 0
+	}
+	return time.Duration(ttl-answer.age) * time.Second
+}
+
+func exchangeDoH(ctx context.Context, client *http.Client, query []byte) (encryptedDNSAnswer, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		"https://cloudflare-dns.com/dns-query", bytes.NewReader(query))
 	if err != nil {
-		return nil, err
+		return encryptedDNSAnswer{}, err
 	}
 	req.Header.Set("Accept", "application/dns-message")
 	req.Header.Set("Content-Type", "application/dns-message")
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return encryptedDNSAnswer{}, err
 	}
 	defer response.Body.Close()
 	contentType, _, _ := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != http.StatusOK || contentType != "application/dns-message" ||
 		response.ContentLength > maxDNSMessage {
-		return nil, errors.New("invalid encrypted DNS response")
+		return encryptedDNSAnswer{}, errors.New("invalid encrypted DNS response")
 	}
 	result, err := io.ReadAll(io.LimitReader(response.Body, maxDNSMessage+1))
 	if err != nil || len(result) < 12 || len(result) > maxDNSMessage {
-		return nil, errors.New("invalid encrypted DNS response size")
+		return encryptedDNSAnswer{}, errors.New("invalid encrypted DNS response size")
 	}
-	return result, nil
+	answer := encryptedDNSAnswer{message: result}
+	if value := response.Header.Get("Age"); value != "" {
+		age, err := strconv.ParseUint(value, 10, 32)
+		answer.age, answer.noCache = uint32(age), err != nil
+	}
+	for _, header := range response.Header.Values("Cache-Control") {
+		for _, directive := range strings.Split(header, ",") {
+			name, argument, _ := strings.Cut(directive, "=")
+			switch strings.ToLower(strings.TrimSpace(name)) {
+			case "no-cache", "no-store":
+				answer.noCache = true
+			case "max-age":
+				value := strings.TrimSpace(argument)
+				if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+					value = value[1 : len(value)-1]
+				}
+				parsed, err := strconv.ParseUint(value, 10, 32)
+				if err != nil {
+					answer.noCache = true
+					continue
+				}
+				seconds := uint32(parsed)
+				if answer.maxAge == nil || seconds < *answer.maxAge {
+					answer.maxAge = &seconds
+				}
+			}
+		}
+	}
+	return answer, nil
 }
 
 func (t *tunnelStack) dnsResponse(query []byte, destination netip.AddrPort, datagram bool) []byte {
@@ -91,7 +138,8 @@ func (t *tunnelStack) dnsResponse(query []byte, destination netip.AddrPort, data
 		response, _ = exchangeOriginal(ctx, t.options.dial, destination, query, datagram)
 	case dnsEncrypted:
 		// A failed DoH request must not retry with plaintext DNS.
-		response, _ = t.options.encryptedExchange(ctx, query)
+		answer, _ := t.options.encryptedExchange(ctx, query)
+		response = answer.message
 	default:
 		return nil
 	}

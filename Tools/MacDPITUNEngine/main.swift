@@ -17,8 +17,8 @@ private struct Options {
               let offset = Int32(arguments[3]), (1...16_000).contains(offset),
               let doh = Int32(arguments[4]), (0...1).contains(doh),
               let repair = Int32(arguments.count == 7 ? arguments[6] : "0"),
-              repair == 0 || (repair == 1 && doh == 1 && profile != 0),
-              let domains = Self.domains(explicit: arguments[5], encrypted: doh == 1) else { return nil }
+              repair == 0 || (repair == 1 && profile != 0),
+              let domains = Self.domains(explicit: arguments[5], encrypted: doh == 1 || repair == 1) else { return nil }
         self.session = arguments[1]
         self.profile = profile
         self.splitOffset = offset

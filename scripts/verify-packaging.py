@@ -58,6 +58,9 @@ def verify(app, require_production=False):
         require(not (app / 'Contents/embedded.provisionprofile').exists(), 'Personal builds cannot contain provisioning profiles.')
         helper_root = app / 'Contents/Helpers'
         require({p.name for p in helper_root.iterdir()} == METADATA.TUN_BINARIES, 'Incorrect personal TUN components.')
+        pins = info.get('MacDPITUNExecutableSHA256')
+        require(pins == {name: hashlib.sha256((helper_root / name).read_bytes()).hexdigest()
+                         for name in METADATA.TUN_BINARIES}, 'Personal TUN executable digests do not match the signed manifest.')
         for binary in [app / 'Contents/MacOS/MacDPI', *(helper_root / name for name in sorted(METADATA.TUN_BINARIES))]:
             require(binary.is_file() and not binary.is_symlink(), 'Invalid personal TUN executable.')
             require(not binary.stat().st_mode & (stat.S_ISUID | stat.S_ISGID), 'Unexpected elevated executable mode.')
