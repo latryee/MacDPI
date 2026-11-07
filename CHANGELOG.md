@@ -9,6 +9,10 @@
 - Added isolated packet, DNS, IPC, route, mixed-load and app lifecycle coverage. Verified real GUI activation/Disable and public HTTPS/API/WSS requests. The owner confirmed bidirectional Discord audio and a Roblox game session on one Mac/network.
 - Recorded a 496-second live resource sample. Intel/older macOS runtime, extended stability, live crash/network transitions and notarization remain unverified.
 - Build 4 adds on-demand app/engine CPU and RSS display, with unavailable/stale samples handled explicitly and no resource polling while idle. Its 126 core and 27 hosted model tests passed; the owner-participated live trial used build 3.
+- Build 5 uses neutral wording for cleanup-confirmed failures instead of attributing an unknown stop to the helper. A later build 3 stop remains unexplained and is recorded separately; extended stability is not claimed.
+
+- Build 6 adds fixed-category local failure diagnostics. Worker categories require a failed final session outcome; normal stop/cancellation does not produce a worker-failure log. Stop before readiness is normal cancellation, and known-lease detach is verified even without ownership or a journal.
+- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. The current interactive UI check was unavailable on the locked Mac; no live build 6 or 30-minute result is claimed.
 
 ## 0.2.0 — local review
 

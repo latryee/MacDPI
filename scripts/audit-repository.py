@@ -8,6 +8,9 @@ listed=subprocess.check_output(['git','ls-files','--cached','--others','--exclud
 for item in listed:
     if not item: continue
     path=root/item.decode()
+    relative=path.relative_to(root)
+    assert 'xcuserdata' not in relative.parts and path.name != '.DS_Store',path
+    assert not relative.parts or relative.parts[0] != 'build',path
     assert path.suffix not in ['.p12','.pem','.key','.cer','.mobileprovision','.provisionprofile'],path
     if path.suffix in ['.swift','.py','.sh','.md','.yml','.json','.plist','.entitlements']:
         text=path.read_text()

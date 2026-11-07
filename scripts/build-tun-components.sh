@@ -38,7 +38,7 @@ for arch in arm64 x86_64; do
   done
   xcrun swiftc -swift-version 5 -O -whole-module-optimization -sdk "$sdk" -target "$target" \
     -import-objc-header IntegrationSupport/TUNHelperBridge.h -framework Security -framework SystemConfiguration \
-    MacDPI/Core/TUNRoutePlanning.swift MacDPI/Core/TUNRouteTransaction.swift MacDPI/Core/TUNFileRouteJournalStore.swift \
+    MacDPI/Core/TUNRoutePlanning.swift MacDPI/Core/TUNRouteTransaction.swift MacDPI/Core/TUNFileRouteJournalStore.swift MacDPI/Core/TUNFailureCategory.swift \
     Tools/MacDPITUNHelper/*.swift "$slice/TUNNative.o" "$slice/TUNSessionIPC.o" -o "$slice/MacDPITUNHelper"
   xcrun swiftc -swift-version 5 -O -whole-module-optimization -sdk "$sdk" -target "$target" \
     -import-objc-header Tools/MacDPITUNEngine/Bridge.h -framework Security -framework SystemConfiguration \

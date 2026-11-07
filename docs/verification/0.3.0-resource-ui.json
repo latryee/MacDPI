@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "recorded_at_utc": "2026-11-07T19:54:36.782648+00:00",
+  "recorded_at_utc": "2026-11-07T20:25:03.138937+00:00",
   "version": "0.3.0",
-  "build": "4",
+  "build": "5",
   "scope": "On-demand UI resource sample only. Host and own unprivileged engine are sampled over approximately one second; root helper is excluded and disclosed. No packet contents, endpoint names, new privilege or background resource polling.",
   "tests": {
     "swift_core_passed": 126,
@@ -27,9 +27,10 @@
     "published": false
   },
   "binary_sha256": {
-    "host": "02c1b7ba5e4d6cbb126eddd5ae2567b0eef4faa3179824901887c4b7e71a01b3",
-    "engine": "48a3cf21d4afc38159e0ef8b5bcabaf667346fda8b50b07e82e12f0804faedd2",
+    "host": "26c77cc87e004d0fbff8dd7cd071b2604490abc3cadc64d6bc6967fc168c6130",
+    "engine": "a693b14a5e71817c82f58fc2fdca1b7d4193579973e3ae3b2df65a8aa6cdab4d",
     "helper": "0785cce7a65f65778337169037986b98665dc4792295d77a6247c771ad3b0c08"
   },
-  "live_evidence_boundary": "The owner-participated voice/game trial and its 496-second aggregate measurement used build 3, recorded separately. This build adds resource display and retains the route/TLS/UDP algorithms; no new live activation was performed for build 4."
+  "live_evidence_boundary": "Owner-participated voice/game and the 496-second aggregate measurement used build 3. Builds 4/5 add resource display and accurate failure wording without changing route/TLS/UDP algorithms. No live activation is claimed for build 5.",
+  "failure_wording": "Cleanup-confirmed failure is described neutrally; the UI does not attribute an unknown stop to the helper."
 }

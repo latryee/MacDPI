@@ -193,6 +193,30 @@ final class TUNRouteTests: XCTestCase {
         XCTAssertNil(store.record)
     }
 
+    func testEarlyReleaseRetryNeedsDetachProofWithoutOwnershipOrJournal() throws {
+        let backend = MockRouteBackend(), store = MockJournalStore()
+        let route = try XCTUnwrap(backend.plan().routes.first)
+        backend.holdsLease = false // Descriptor release can precede kernel detach.
+        let transaction = TUNRouteTransaction(backend: backend, store: store)
+        try transaction.auditRecovery() // No record was needed before capture began.
+        XCTAssertNil(store.record)
+        XCTAssertThrowsError(try transaction.verifyReleased(backend.lease)) {
+            XCTAssertEqual($0 as? TUNRouteError, .restorationUnverified)
+        }
+        backend.interfaces.remove(backend.lease.interfaceIndex)
+        backend.routes.insert(route) // A lingering associated route also blocks proof.
+        XCTAssertThrowsError(try transaction.verifyReleased(backend.lease)) {
+            XCTAssertEqual($0 as? TUNRouteError, .restorationUnverified)
+        }
+        backend.routes.remove(route)
+        let foreign = TUNObservedRoute(destination: route.destination, interfaceIndex: 1,
+                                       linkGatewayIndex: nil, scopeIndex: 0)
+        backend.routes.insert(foreign)
+        XCTAssertNoThrow(try transaction.verifyReleased(backend.lease))
+        XCTAssertEqual(backend.routes, [foreign])
+        XCTAssertEqual(backend.releaseCount, 0) // Verification never mutates other state.
+    }
+
     func testHelperCrashAuditRejectsReusedInterfaceAndPreservesReplacement() throws {
         let backend = MockRouteBackend(), store = MockJournalStore()
         let plan = try backend.plan()

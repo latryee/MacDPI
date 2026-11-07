@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import SystemConfiguration
+import OSLog
 
 private struct Options {
     let session: String
@@ -90,6 +91,15 @@ private enum Event {
     case timeout
     case failure
 }
+
+private final class WorkerCompletion: @unchecked Sendable {
+    private let lock = NSLock()
+    private var code: Int32?
+    func record(_ code: Int32) { lock.lock(); self.code = code; lock.unlock() }
+    var exitCode: Int32? { lock.lock(); defer { lock.unlock() }; return code }
+}
+
+private let workerCompletion = WorkerCompletion()
 
 private let stop = UInt8(ascii: "S")
 private let ready = UInt8(ascii: "R")
@@ -205,8 +215,9 @@ private func run(_ options: Options) -> Outcome {
         defer { engineDone.leave() }
         var domains = options.domains
         domains.withUnsafeMutableBufferPointer { buffer in
-            _ = macdpi_tun_run(workerPacket, workerLease, ipv4Index, ipv6Index, options.profile, options.splitOffset,
-                               options.dnsOverHTTPS, options.originRepair, buffer.baseAddress, Int32(buffer.count))
+            let result = macdpi_tun_run(workerPacket, workerLease, ipv4Index, ipv6Index, options.profile, options.splitOffset,
+                                        options.dnsOverHTTPS, options.originRepair, buffer.baseAddress, Int32(buffer.count))
+            workerCompletion.record(result)
         }
     }
 
@@ -242,5 +253,11 @@ private func run(_ options: Options) -> Outcome {
 
 signal(SIGPIPE, SIG_IGN)
 private let outcome = Options(arguments: CommandLine.arguments).map(run) ?? .failed
+private let sessionFailed = outcome == .failed || outcome == .failedClean || outcome == .recoveryRequired
+if let result = workerCompletion.exitCode,
+   let category = TUNFailureCategory.worker(exitCode: result, sessionFailed: sessionFailed)?.rawValue {
+    Logger(subsystem: "io.github.latryee.MacDPI", category: "TUN lifecycle")
+        .error("Worker result during failed session: \(category, privacy: .public)")
+}
 report(outcome.status)
 exit(outcome.rawValue)

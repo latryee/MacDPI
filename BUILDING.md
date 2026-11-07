@@ -2,6 +2,8 @@
 
 For the 0.3.0 personal-use TUN build, use the separate build path and toolchain checks. The instructions below still apply to the optional Network Extension and local proxy build. [Personal TUN build](docs/PERSONAL_TUN.md#build-and-safe-checks).
 
+Disable and quit MacDPI before replacing its existing app bundle. To keep a session running during development, build under a separate `MACDPI_BUILD_ROOT` and replace the old bundle only after that session has stopped. Do not build over a running copy.
+
 Use a Mac with full Xcode selected, Swift 5.9 or later, Python 3 and system OpenSSL for the TLS fixtures. The app and both system extensions target macOS 12 and build for arm64 and x86_64. The native project uses the Xcode 27.2 project format. The portable build script invokes the selected Xcode compiler directly.
 
 ```sh
@@ -41,4 +43,10 @@ The host must be authorized to install system extensions and use both Network Ex
 
 After separate upload authorization and setup of an Apple notary keychain profile, run `scripts/notarize.sh KEYCHAIN_PROFILE`. It makes a fresh archive from the verified Developer ID app, submits it, waits for acceptance, staples, validates Gatekeeper acceptance and regenerates packages and checksums. [Notarization script](scripts/notarize.sh), [Apple notarization documentation](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
 
-Update the shared marketing version and advance the build number with `scripts/set-version.py MAJOR.MINOR.PATCH`. The current version is 0.3.0/build 4. Xcode and the portable build stamp the shared version into components. Review the changelog and release notes before packaging. GitHub Actions prepares and checks review artifacts on macOS runners; the manual preparation workflow now produces the personal TUN package. Remote CI, Developer ID signing and notarization await an authorized run. Publishing is a separate maintainer action. [GitHub runner labels](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+Update the shared marketing version and advance the build number with `scripts/set-version.py MAJOR.MINOR.PATCH`. The current version is 0.3.0/build 6. Xcode and the portable build stamp the shared version into components. Review the changelog and release notes before packaging. GitHub Actions prepares and checks review artifacts on macOS runners; the manual preparation workflow now produces the personal TUN package. Remote CI, Developer ID signing and notarization await an authorized run. Publishing is a separate maintainer action. [GitHub runner labels](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+
+## Current personal release checks
+
+Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The current Debug CLI passed 23 loopback scenarios; four native TCP/UDP IPv4/IPv6 scenarios, the full Go suite with 15-second mixed traffic per family, capacity/lifecycle checks and native IPC also passed. Exact archives, signatures and post-promotion checksums were verified. [Current release proof](docs/verification/0.3.0-release-readiness.json).
+
+The three native UI cases are an earlier run. The current interactive check was unavailable because the test Mac was locked; this is not a failed test. No live build 6 activation or 30-minute stability test is claimed.

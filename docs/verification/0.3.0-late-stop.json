@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-07T20:25:03.153144+00:00",
+  "observed_build": "3",
+  "ui_phase": "Failed",
+  "ui_cleanup_verified": true,
+  "engine_and_helper_processes_absent": true,
+  "cause": "unknown",
+  "followup_policy": {
+    "evidence_source": "Delegated read-only audit observed three snapshots in tool output/in memory; raw outputs were not retained. This is a sanitized reconstruction of category comparisons.",
+    "matched_original_disabled_baseline": [
+      "primary-service",
+      "physical-defaults",
+      "interfaces",
+      "dns",
+      "proxies",
+      "service-order",
+      "network-policy"
+    ],
+    "differed_from_original_disabled_baseline": [
+      "protected-prefixes"
+    ],
+    "three_followup_snapshots_identical": true,
+    "causality": "A changed protected-prefix baseline is one health-check stop condition, but later hashes do not establish the timing or cause of this stop."
+  },
+  "diagnostic_limits": [
+    "The old UI attribution to the helper was stronger than FAILED_CLEAN proves; worker/IPC failures can yield that status too.",
+    "The helper stderr reason is not retained by the UI and the clean journal is cleared.",
+    "No application-coded active-session timer was found; that does not exclude an external signal or process/system event."
+  ],
+  "actions": {
+    "no_root_or_network_changes_for_followup": true,
+    "inactive_old_app_quit": true,
+    "neutral_error_wording_added_in_build_5": true
+  },
+  "acceptance_effect": "Personal voice/game success remains valid. Extended daily stability is not verified and this late stop is not labeled a stability pass."
+}

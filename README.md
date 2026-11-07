@@ -1,14 +1,25 @@
 # MacDPI
 
-**0.3.0 Personal TUN preview** provides local TCP/UDP traffic handling without a paid Apple Developer membership, a remote VPN server or a separately installed DPI tool. Press **Enable**, approve macOS administrator authorization and use supported desktop applications without configuring their proxies. **Disable** releases the session's interface and routes. [Build, authorization and recovery](docs/PERSONAL_TUN.md).
+A native, open-source macOS DPI circumvention app for supported desktop traffic.
 
-On November 7, 2026, the owner confirmed bidirectional Discord audio and a Roblox game session while Automatic setup was active on the development Mac. Certificate-verified public HTTPS, the Discord API and an unauthenticated Gateway WebSocket also passed through the real tunnel. This is evidence from one Mac and network, not a guarantee for other providers or destinations. A 496-second process sample measured 0.41% combined CPU and 130.33 MiB peak RSS. [Current engineering report](docs/PERSONAL_REPORT_0.3.0.md), [verification scope](docs/TUN_VERIFICATION.md).
+**0.3.0 Personal TUN preview** uses a local virtual interface, direct TCP/UDP forwarding and TLS ClientHello record splitting. Open the app, press **Enable**, approve macOS authorization and use supported applications without configuring their proxies. No paid Apple Developer membership, remote VPN server or separately installed DPI tool is required.
 
-The personal build uses System DNS for ordinary traffic and selective Cloudflare DoH for eligible Discord/Roblox TLS origin repair. TCP ClientHello record splitting preserves the encrypted connection and client certificate checks. UDP datagrams pass unchanged; forwarding does not imply a general UDP or QUIC circumvention technique. [Privacy](PRIVACY.md), [compatibility](COMPATIBILITY.md).
+**Current status:** this is a testing preview. Discord two-way audio and a Roblox game session were confirmed by the owner on one Mac/network. A later session stopped unexpectedly with verified cleanup; its cause is unresolved. Extended daily reliability is not yet verified. [Detailed evidence](docs/TUN_VERIFICATION.md) · [Engineering report](docs/PERSONAL_REPORT_0.3.0.md)
 
-**Measure usage** takes a short CPU/RSS sample of the app and its own unprivileged engine. The session helper is excluded and the scope is displayed. Measurement is on demand, without background resource polling or traffic inspection. The build 4 UI update passed 126 core and 27 hosted model tests; the real voice/game trial above used build 3. [UI update verification](docs/verification/0.3.0-resource-ui.json).
+## What it does
 
-Build the personal Universal 2 app, ZIP, DMG and checksums with full Xcode and Python 3:
+- Handles eligible public TCP and UDP traffic through a local Darwin `utun` interface.
+- Applies the existing Swift TLS record transformation to applicable TCP connections. The client still verifies the origin certificate.
+- Defaults to **Automatic setup**: Standard TLS handling, ordinary System DNS and selective validated Cloudflare DNS-over-HTTPS for eligible Discord/Roblox TLS origin repair.
+- Keeps private/protected networks outside its capture plan. It leaves original default routes, DNS, proxy and VPN settings as found.
+- Runs the interface and route helper with per-session administrator authorization. The app and traffic engine stay unprivileged.
+- Provides menu bar controls, diagnostics, recovery guidance and an on-demand app/engine CPU and memory sample.
+
+Traffic goes directly to destination servers. MacDPI is not a remote VPN and does not hide your public IP. UDP payloads pass unchanged; UDP forwarding is not a general UDP or QUIC bypass technique.
+
+## Build and open
+
+Use a Mac with **full Xcode** selected and **Python 3**. The checked build used Xcode 27.2. From a reviewed source checkout:
 
 ```sh
 scripts/fetch-tun-toolchain.sh
@@ -16,35 +27,100 @@ MACDPI_PERSONAL_TUN=1 MACDPI_BUILD_ROOT=build/personal scripts/package-release.s
 open build/personal/release/MacDPI.app
 ```
 
-The compiler is fetched explicitly with a pinned checksum. Go and gVisor are linked into the bundled worker; users need no separate runtime installation. The app, helper and worker have arm64/x86_64 slices targeting macOS 12. Runtime evidence is currently Apple Silicon/macOS 26.6. The package is ad hoc signed, not Developer ID signed or notarized. If macOS declines a downloaded copy, build from reviewed source; do not weaken system security settings.
+The fetch step explicitly downloads a pinned Go compiler and checks its published SHA-256. Go and gVisor are linked into the bundled worker; the finished app needs no separate Go installation or runtime download.
 
-## Preserved Network Extension and local proxy builds
+**Disable and quit a running MacDPI copy before replacing it.** Use a separate `MACDPI_BUILD_ROOT` when developing alongside a running session. [Build guide](BUILDING.md)
 
-MacDPI is a native macOS utility for applying TLS ClientHello record splitting to supported outbound traffic. The 0.2.0 source and local review build bundle a transparent TCP/UDP system extension and an optional encrypted DNS extension. A provisioned and approved build is designed to route new flows from apps across the Mac through the **Enable** control. The available ad hoc package supports review and local diagnostics. Installed routing and native Discord and Roblox compatibility await real Mac testing.
+The build produces these local files:
 
-- **Mac-wide integration** handles eligible public IPv4 and IPv6 TCP/UDP flows. TCP ports 443, 8443 and 9443 are eligible for TLS record splitting. Other supported TCP traffic and UDP payloads are forwarded unchanged.
-- **System DNS** is the default. With separate authorization, the optional DNS provider sends eligible public DNS queries to Cloudflare over HTTPS. Local, split and interface-bound DNS keep their original resolver. A failed encrypted query returns failure.
-- **Local proxy diagnostics** uses a credential-protected loopback HTTP CONNECT listener for public TCP 443. On macOS 14 and later, the optional proxied web window supplies those credentials automatically.
-- **Compatibility** forwards bytes unchanged. **Standard** chooses a split inside the visible server name or at payload byte 32. **Advanced** uses the selected offset. End-to-end TLS certificate checks remain in the client.
+| Artifact | Path |
+| --- | --- |
+| Application | `build/personal/release/MacDPI.app` |
+| DMG | `build/personal/dist/MacDPI-0.3.0-universal2-personal-adhoc.dmg` |
+| ZIP | `build/personal/dist/MacDPI-0.3.0-universal2-personal-adhoc.zip` |
+| SHA-256 checksums | `build/personal/dist/MacDPI-0.3.0-universal2-personal-adhoc.sha256` |
 
-The 0.1.0 local proxy reached selected Discord web/API and WebSocket endpoints and Roblox web/API endpoints on one network on November 4, 2026. That historical test did not establish voice, gameplay or desktop application routing. [Historical test evidence](docs/REAL_NETWORK_VALIDATION.md).
-
-On a Mac with full Xcode and Swift 5.9 or later:
-
-```sh
-scripts/build-app.sh
-open build/release/MacDPI.app
-```
-
-To try the local review build, select **Settings → Operation → Local proxy diagnostics**, return to Overview and press **Enable**. To use Mac-wide integration, follow the signing and approval steps. Both the host and its two extensions compile for Intel and Apple Silicon with a macOS 12 deployment target. Runtime evidence is limited to the development Mac. [Installation and recovery](INSTALLATION.md), [build and signing instructions](BUILDING.md), [compatibility matrix](COMPATIBILITY.md).
-
-Run controlled tests and prepare review packages:
+Verify the archives after building:
 
 ```sh
-scripts/test.sh
-scripts/package-release.sh --existing --dmg
+cd build/personal/dist
+shasum -a 256 -c MacDPI-0.3.0-universal2-personal-adhoc.sha256
 ```
 
-MacDPI uses direct connections and has no telemetry or external traffic relay. The personal worker includes Go/gVisor and bundled dependency notices; no external DPI executable or runtime download is used at application startup. TLS authentication stays with the client. Circumvention effectiveness depends on the network and protocol. [Current report](docs/PERSONAL_REPORT_0.3.0.md), [0.2.0 report](docs/FINAL_REPORT.md), [test results](TEST_RESULTS.md), [performance](PERFORMANCE.md), [architecture](ARCHITECTURE.md), [security](SECURITY.md), [privacy](PRIVACY.md).
+These paths describe generated artifacts, not published downloads. The build 6 artifacts have not been uploaded or published.
 
-MIT licensed.
+### Signing and compatibility
+
+The personal app is **ad hoc signed, not Developer ID signed or notarized**. If macOS declines a downloaded copy, build from reviewed source. Do not disable Gatekeeper, SIP or certificate validation.
+
+The app, helper and worker contain **arm64 and x86_64** slices targeting **macOS 12.0**. Runtime testing is currently limited to Apple Silicon on macOS 26.6. Intel, older macOS and physical IPv6 remain unverified. [Compatibility matrix](COMPATIBILITY.md)
+
+## Use the app
+
+1. Open `MacDPI.app` and leave **Automatic setup** selected.
+2. Press **Enable** and approve the macOS administrator dialog. It may identify Apple's script runner as `osascript`; macOS handles the credentials.
+3. Wait for **Active**, then test new application connections. Normal use needs no pasted Terminal command or per-app proxy setup.
+4. Use **Measure usage** for a short CPU/RSS sample. It covers the app and its unprivileged engine; the session helper is excluded and the scope is displayed. It does not start continuous resource polling.
+5. Press **Disable** when finished and wait for verified interface/route release. Closing the main window leaves an enabled session available through the menu bar.
+
+Enable temporarily adds MacDPI-owned capture routes. Disable releases the session's interface and checks that those routes are gone. If cleanup cannot be confirmed, the app shows **Recovery required**. [Operation, removal and recovery](INSTALLATION.md) · [Personal TUN guide](docs/PERSONAL_TUN.md)
+
+## What has been verified
+
+| Area | Evidence |
+| --- | --- |
+| Personal application use | The owner confirmed Discord audio in both directions and joining and remaining in a Roblox game on the development Mac/network. |
+| Real network integration | GUI activation through macOS authorization, captured public routes, certificate-verified HTTPS/API/WSS and helper-confirmed Disable. An earlier short GUI trial matched all eight baseline policy fingerprints after cleanup. |
+| Local correctness | Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The full Go suite, 15-second mixed runs per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. [Current results](docs/TUN_VERIFICATION.md) |
+| Current loopback integration | 23 scenarios passed with the current Debug CLI, plus four native TCP/UDP IPv4/IPv6 scenarios. These do not activate real capture routes. |
+| Build and packaging | Universal 2 signatures and exact extracted ZIP/DMG contents verified. [Current package record](docs/verification/0.3.0-release-readiness.json) |
+| Short resource sample | Over 496 seconds with uncontrolled owner traffic, the app/engine/helper averaged 0.411% of one CPU core and peaked at 130.33 MiB combined RSS. This is not a strict idle or long-term benchmark. [Measurements](PERFORMANCE.md) |
+
+The voice/game trial used build 3. Build 6 has separate local, lifecycle and packaging verification; it has not been counted as another live service trial. Three native UI cases passed in a prior run. The current interactive check was unavailable because the test Mac was locked, which is not a test failure. The late unexpected stop is recorded in [the follow-up report](docs/verification/0.3.0-late-stop.json).
+
+## Limits and troubleshooting
+
+Circumvention depends on the network, application and filtering method. It does not guarantee access to every site or protocol. Encrypted or absent visible server names can prevent selective repair. Existing VPNs, filters and split-DNS policies can affect coverage; detected conflicts can prevent activation or stop a session.
+
+Thirty-minute stability, sleep/wake, network/VPN switching, deliberate crash recovery, reconnect behavior and quantified voice/game latency still need dedicated real-world validation. The unresolved later stop prevents a general reliability claim.
+
+| Symptom | Next step |
+| --- | --- |
+| Awaiting authorization | Complete the macOS dialog. If canceled or expired, retry Enable when ready. |
+| Failed, with verified cleanup | Review the current connection and diagnostics before retrying. Repeated stops should be reported with the build, macOS version, architecture and sanitized diagnostic report. |
+| Recovery required | Keep the tunnel disabled and follow the ownership-specific recovery guide. Do not flush unrelated routes or reset all network settings. |
+| A site, voice or game still fails while Active | Check Automatic setup and the compatibility limits. Test website access, desktop connectivity, two-way audio and an actual game separately. |
+| macOS declines the package | Build from reviewed source or use a genuinely notarized release when one exists. |
+
+[More troubleshooting](TROUBLESHOOTING.md) · [Route ownership and recovery](docs/TUN_ROUTE_SAFETY.md)
+
+## Privacy and security
+
+MacDPI has no telemetry, advertising, accounts or external traffic relay. It does not install trusted certificates, decrypt TLS traffic, store passwords or collect browsing history.
+
+Automatic TLS origin repair can send eligible visible Discord/Roblox names to Cloudflare over HTTPS. Cloudflare receives those DNS questions and the source IP. Ordinary DNS retains its existing system path. Explicit encrypted lookup failures do not silently downgrade.
+
+The privileged helper is session-scoped and authenticates its worker. It installs no persistent root daemon or passwordless sudo rule. The private recovery journal records owned interface/routes. Review the [privacy policy](PRIVACY.md), [security policy](SECURITY.md) and [architecture](ARCHITECTURE.md) before authorizing a build.
+
+Caught TUN failures can write fixed categories to the Mac's local unified log for troubleshooting. Those entries contain no endpoints, DNS names, configuration values or payloads. MacDPI does not upload these entries; macOS controls their retention and access.
+
+## Run safe tests
+
+The normal suites use synthetic packets and loopback fixtures. They do not activate a real TUN interface or change host networking:
+
+```sh
+swift test --scratch-path build/swift
+scripts/test-tun-worker.sh
+scripts/test-tun-ipc.sh
+python3 -m unittest discover -s Tests/PackagingTests
+```
+
+The worker tests require the pinned compiler fetched above. Hosted model/UI checks, benchmarks and deliberately authorized live tests are documented in [BUILDING.md](BUILDING.md), [PERFORMANCE.md](PERFORMANCE.md) and [the verification report](docs/TUN_VERIFICATION.md). Live account, microphone and game tests require the user's participation.
+
+## Other modes and contributing
+
+The source preserves the authenticated local HTTP CONNECT proxy and optional Network Extension providers. They are independent modes; the personal TUN package omits those extensions. The local proxy handles only explicitly configured clients, and the optional system extensions have their own provisioning and approval requirements. [Preserved 0.2.0 report](docs/FINAL_REPORT.md)
+
+Bug reports and testing on additional Mac/network combinations are welcome. Include the build, macOS version, architecture, mode and sanitized diagnostics; keep credentials and private traffic out of reports. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Report security issues through the process in [SECURITY.md](SECURITY.md).
+
+MacDPI is [MIT licensed](LICENSE). Go, gVisor and transitive dependencies retain their own licenses; their notices ship in `MacDPI.app/Contents/Resources/TUNLicenses`.

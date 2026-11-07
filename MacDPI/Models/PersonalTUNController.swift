@@ -183,7 +183,7 @@ final class PersonalTUNController {
             case "FAILED": statusVerified = !mayHaveRoutes; publish(.failed, "The traffic engine could not start. Review the selected DNS settings and retry.")
             case "FAILED_CLEAN":
                 statusVerified = true
-                let failure = wasActive ? "The helper stopped the active tunnel." : "The helper could not finish configuring the tunnel."
+                let failure = wasActive ? "The active tunnel stopped." : "Tunnel setup did not complete."
                 publish(.failed, failure + " Route cleanup was verified.")
             case "RECOVERY_REQUIRED": statusVerified = true; publish(.recovery, "Route cleanup could not be verified. Run the recovery check.")
             default: stop(); return

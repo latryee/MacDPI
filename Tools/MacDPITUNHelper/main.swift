@@ -1,6 +1,7 @@
 import Darwin
 import Dispatch
 import Foundation
+import OSLog
 
 private let journalDirectory = "/var/db/io.github.latryee.macdpi"
 
@@ -66,13 +67,13 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
     func restore(afterFailure: Bool = false) throws {
         if let lease, backend.owns(lease), transaction.phase == .disabled {
             try backend.release(lease)
-            let observed = try backend.snapshot(excluding: nil)
-            guard !observed.interfaces.contains(lease.interfaceIndex),
-                  !observed.routes.contains(where: { $0.isAssociated(with: lease) }) else {
-                throw TUNRouteError.restorationUnverified
-            }
         } else {
             try transaction.disable()
+        }
+        // Keep checking the known lease even after release relinquishes backend
+        // ownership. A retry before activation has no journal to prove detach.
+        if let lease {
+            try transaction.verifyReleased(lease)
         }
         // Either acknowledgement requires the broker to verify that owned state is gone.
         final = afterFailure ? UInt8(ascii: "X") : UInt8(ascii: "D")
@@ -90,7 +91,13 @@ private func session(_ identifier: String, uid: uid_t, worker: URL) throws {
         transferred = true
         guard macdpi_tun_broker_send_fd(peer, packetFD, v4, v6) == 0 else { throw TUNRouteError.engineNotReady }
         var byte: UInt8 = 0
-        guard macdpi_tun_control_receive(peer, &byte, 12_000) == 1, byte == 82 else { // R
+        let received = macdpi_tun_control_receive(peer, &byte, 12_000)
+        if received == 1, byte == 83 { // S: cancellation after handoff, before readiness.
+            stopRequested = true; drained = true
+            try restore()
+            return
+        }
+        guard received == 1, byte == 82 else { // R
             throw TUNRouteError.engineNotReady
         }
         try transaction.activate(plan, engineIsReady: engineIsReady)
@@ -145,6 +152,9 @@ do {
         try session(arguments[1], uid: uid, worker: worker)
     }
 } catch {
+    let category = TUNFailureCategory.broker(error).rawValue
+    Logger(subsystem: "io.github.latryee.MacDPI", category: "TUN lifecycle")
+        .error("Broker failure: \(category, privacy: .public)")
     fputs("MacDPI helper did not complete. Check the application status or run the documented recovery check.\n", stderr)
     exit(1)
 }

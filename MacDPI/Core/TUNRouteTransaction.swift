@@ -118,6 +118,13 @@ public final class TUNRouteTransaction {
         else { try auditRecovery() }
     }
 
+    /// Independently verify an early interface release before a journal exists.
+    /// Relinquished descriptor ownership alone does not prove kernel detach.
+    public func verifyReleased(_ lease: TUNRouteLease) throws {
+        guard lease.isValid else { throw TUNRouteError.invalidLease }
+        try verifyDetached(lease)
+    }
+
     /// Safe after helper death or reboot. Check observed state and clear a fully resolved journal.
     /// A matching interface index may have been reused. If ambiguous, fail without changing routes.
     public func auditRecovery() throws {
