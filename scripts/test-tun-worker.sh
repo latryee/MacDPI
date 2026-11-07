@@ -12,4 +12,7 @@ mkdir -p build/tun-worker-tests
 (cd Tools/TUNWorker && "$go_tool" mod download && "$go_tool" mod verify)
 modfile="$(python3 Tools/TUNWorker/prepare-dependency.py "$GOMODCACHE" "$root/build/tun-worker-tests")"
 cd Tools/TUNWorker
-"$go_tool" test -p 3 -mod=readonly -modfile "$modfile" -timeout 90s -v "$@" .
+test_timeout=90s
+# The opt-in workload runs once per address family, up to 60 seconds each.
+if [[ -n "${MACDPI_SYNTHETIC_STABILITY_SECONDS:-}" ]]; then test_timeout=150s; fi
+"$go_tool" test -p 3 -mod=readonly -modfile "$modfile" -timeout "$test_timeout" -v "$@" .

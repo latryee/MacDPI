@@ -1,6 +1,18 @@
 # Performance
 
-MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait and GUI in local mode. The enabled physical TUN path still needs an authorized trial. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait and GUI in local mode. A short authorized physical TUN trial verified Enable, public HTTPS and Disable. Enabled-path resource use and physical throughput still need a dedicated authorized measurement. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+
+The November 7 mixed-load fixture ran four paced TCP flows and four UDP flows together for 15 seconds per address family. Each family verified 58.56 MiB of TCP payload in each direction and all 2,996 UDP replies, with no additional loss or payload mismatch. Median UDP RTT was 0.249 ms for IPv4 and 0.255 ms for IPv6; the 95th percentiles were 0.974 ms and 1.090 ms. Cancellation released every worker flow.
+
+The fixture process used 44.8% and 50.0% of one CPU core during the respective IPv4 and IPv6 workloads, with 24.03 and 25.81 MiB RSS at the end of traffic. This includes the simulated client TCP/IP stack, worker stack and native loopback servers. It is not an installed-app resource measurement, an idle sample or evidence of real voice/game quality. A separate five-second-per-family race-instrumented run passed the same integrity and cleanup checks; its timings are unsuitable for performance comparison. [Raw scope and measurements](docs/verification/0.3.0-tun-mixed-stability.json).
+
+Reproduce the bounded synthetic workload without administrator access or system networking changes:
+
+```sh
+MACDPI_SYNTHETIC_STABILITY_SECONDS=15 scripts/test-tun-worker.sh -run '^TestSyntheticMixedTrafficStability$' -count=1
+```
+
+The opt-in duration accepts 5–60 seconds per address family. Normal worker tests skip this workload. The UDP loss fixture separately verifies exactly eight deliberately dropped packets and 72 matching replies per family. It no longer waits for a short timeout for each known drop, so its new timing samples should not be compared directly with older fixture runs.
 
 Local measurements on November 5, 2026 used Apple Silicon, macOS 26.6 and Xcode 27.2. The GUI sample used a development build of the embedded-provider app in isolated diagnostic mode. The headless engine and native socket tests ran on loopback. The measurements exclude installed system extensions, WebKit and external servers.
 

@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-07T17:28:11.350457+00:00",
+  "source_base_commit": "2c255dc71c8fa99a1f9c52ac297f1d4c00653a96",
+  "production_code_changed": false,
+  "platform": {
+    "architecture": "arm64",
+    "macos": "26.6"
+  },
+  "scope": "Opt-in AF_UNIX simulated utun, client TCP/IP stack and native loopback echo peers. No active system TUN, root execution, routes or settings changes.",
+  "workload": "Each address family independently runs four paced TCP echo flows (16 KiB per 16 ms) and four paced UDP echo flows (1200 bytes per 20 ms). Every response is checked byte-for-byte; session cancellation must release every worker flow.",
+  "normal": {
+    "IPv4": {
+      "architecture": "arm64",
+      "cpu_percent_one_core": 44.775375728147004,
+      "go": "go1.26.10",
+      "remaining_tcp_flows": 0,
+      "remaining_udp_flows": 0,
+      "resource_after_cancel_and_gc": {
+        "cpu_seconds": 6.741278,
+        "rss_mib": 24.09375,
+        "go_heap_mib": 1.2799606323242188
+      },
+      "resource_after_traffic": {
+        "cpu_seconds": 6.7338819999999995,
+        "rss_mib": 24.03125,
+        "go_heap_mib": 2.6199493408203125
+      },
+      "resource_before": {
+        "cpu_seconds": 0.017281,
+        "rss_mib": 13.40625,
+        "go_heap_mib": 0.5193023681640625
+      },
+      "scope": "synthetic packet path, client stack and loopback peers; no active system TUN",
+      "seconds": 15.000658042,
+      "tcp_flows": 4,
+      "tcp_verified_bytes_each_direction": 61407232,
+      "udp_flows": 4,
+      "udp_rtt_max_ms": 2.144,
+      "udp_rtt_median_ms": 0.249,
+      "udp_rtt_p95_ms": 0.974,
+      "udp_verified_bytes_each_direction": 3595200,
+      "udp_verified_replies": 2996
+    },
+    "IPv6": {
+      "architecture": "arm64",
+      "cpu_percent_one_core": 49.9590602984229,
+      "go": "go1.26.10",
+      "remaining_tcp_flows": 0,
+      "remaining_udp_flows": 0,
+      "resource_after_cancel_and_gc": {
+        "cpu_seconds": 14.243329,
+        "rss_mib": 25.828125,
+        "go_heap_mib": 1.2244644165039062
+      },
+      "resource_after_traffic": {
+        "cpu_seconds": 14.237619,
+        "rss_mib": 25.8125,
+        "go_heap_mib": 2.5615997314453125
+      },
+      "resource_before": {
+        "cpu_seconds": 6.743349,
+        "rss_mib": 24.21875,
+        "go_heap_mib": 1.501129150390625
+      },
+      "scope": "synthetic packet path, client stack and loopback peers; no active system TUN",
+      "seconds": 15.000822584,
+      "tcp_flows": 4,
+      "tcp_verified_bytes_each_direction": 61407232,
+      "udp_flows": 4,
+      "udp_rtt_max_ms": 2.393,
+      "udp_rtt_median_ms": 0.255,
+      "udp_rtt_p95_ms": 1.09,
+      "udp_verified_bytes_each_direction": 3595200,
+      "udp_verified_replies": 2996
+    }
+  },
+  "race_correctness_only": {
+    "IPv4": {
+      "architecture": "arm64",
+      "cpu_percent_one_core": 867.0151174895593,
+      "go": "go1.26.10",
+      "remaining_tcp_flows": 0,
+      "remaining_udp_flows": 0,
+      "resource_after_cancel_and_gc": {
+        "cpu_seconds": 58.48708,
+        "rss_mib": 78.625,
+        "go_heap_mib": 0.93658447265625
+      },
+      "resource_after_traffic": {
+        "cpu_seconds": 54.221638,
+        "rss_mib": 78.65625,
+        "go_heap_mib": 2.754119873046875
+      },
+      "resource_before": {
+        "cpu_seconds": 2.424246,
+        "rss_mib": 54.390625,
+        "go_heap_mib": 0.6641921997070312
+      },
+      "scope": "synthetic packet path, client stack and loopback peers; no active system TUN",
+      "seconds": 5.974220167,
+      "tcp_flows": 4,
+      "tcp_verified_bytes_each_direction": 524288,
+      "udp_flows": 4,
+      "udp_rtt_max_ms": 977.327,
+      "udp_rtt_median_ms": 275.828,
+      "udp_rtt_p95_ms": 419.259,
+      "udp_verified_bytes_each_direction": 98400,
+      "udp_verified_replies": 82
+    },
+    "IPv6": {
+      "architecture": "arm64",
+      "cpu_percent_one_core": 845.8071783086626,
+      "go": "go1.26.10",
+      "remaining_tcp_flows": 0,
+      "remaining_udp_flows": 0,
+      "resource_after_cancel_and_gc": {
+        "cpu_seconds": 121.864991,
+        "rss_mib": 81.5,
+        "go_heap_mib": 0.9352645874023438
+      },
+      "resource_after_traffic": {
+        "cpu_seconds": 120.029398,
+        "rss_mib": 81,
+        "go_heap_mib": 2.3320083618164062
+      },
+      "resource_before": {
+        "cpu_seconds": 63.848764,
+        "rss_mib": 78.59375,
+        "go_heap_mib": 1.1756439208984375
+      },
+      "scope": "synthetic packet path, client stack and loopback peers; no active system TUN",
+      "seconds": 6.6422507920000005,
+      "tcp_flows": 4,
+      "tcp_verified_bytes_each_direction": 622592,
+      "udp_flows": 4,
+      "udp_rtt_max_ms": 426.025,
+      "udp_rtt_median_ms": 243.111,
+      "udp_rtt_p95_ms": 402.888,
+      "udp_verified_bytes_each_direction": 100800,
+      "udp_verified_replies": 84
+    }
+  },
+  "limits": [
+    "Resource usage includes the synthetic client, worker stack and loopback servers in one test process; it is not installed app/helper resource usage.",
+    "Race instrumentation changes CPU and latency substantially; those values are not performance results.",
+    "This is a short local correctness and load measurement, not a WAN, 30-minute stability, voice or gameplay test.",
+    "UDP loss test now counts injected drops at the fixture and avoids timing out on known dropped packets. Older timing values use a different fixture schedule and are not a direct comparison."
+  ]
+}

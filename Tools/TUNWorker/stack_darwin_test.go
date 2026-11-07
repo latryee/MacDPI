@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -92,6 +93,11 @@ func (s syntheticNetwork) remote(port uint16) tcpip.FullAddress {
 }
 
 func (s syntheticNetwork) attach(t *testing.T, options stackOptions) context.Context {
+	ctx, _ := s.attachFor(t, options, 8*time.Second)
+	return ctx
+}
+
+func (s syntheticNetwork) attachFor(t *testing.T, options stackOptions, lifetime time.Duration) (context.Context, *tunnelStack) {
 	t.Helper()
 	fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_DGRAM, 0)
 	if err != nil {
@@ -115,7 +121,7 @@ func (s syntheticNetwork) attach(t *testing.T, options stackOptions) context.Con
 	}
 	tun := os.NewFile(uintptr(fds[0]), "synthetic utun")
 	peer := os.NewFile(uintptr(fds[1]), "synthetic client")
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), lifetime)
 	var pumps sync.WaitGroup
 	done := make(chan error, 1)
 	t.Cleanup(func() {
@@ -167,10 +173,10 @@ func (s syntheticNetwork) attach(t *testing.T, options stackOptions) context.Con
 	})
 	select {
 	case <-ready:
-		return ctx
+		return ctx, worker
 	case <-ctx.Done():
 		t.Fatal("worker did not become ready")
-		return ctx
+		return ctx, worker
 	}
 }
 
@@ -488,12 +494,21 @@ func TestEmptyDatagramQueueIsBounded(t *testing.T) {
 }
 
 func TestSyntheticUDPLossAndJitter(t *testing.T) {
-	s := makeSyntheticNetwork(t, false)
-	listener, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	for _, v6 := range []bool{false, true} {
+		family, _ := loopback(v6)
+		t.Run("IPv"+family, func(t *testing.T) { testSyntheticUDPLossAndJitter(t, v6) })
+	}
+}
+
+func testSyntheticUDPLossAndJitter(t *testing.T, v6 bool) {
+	family, address := loopback(v6)
+	s := makeSyntheticNetwork(t, v6)
+	listener, err := net.ListenPacket("udp"+family, address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer listener.Close()
+	var injectedDrops atomic.Int32
 	go func() {
 		buffer := make([]byte, 32)
 		for {
@@ -501,21 +516,25 @@ func TestSyntheticUDPLossAndJitter(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if n == 2 && buffer[1]%10 != 0 {
-				_, _ = listener.WriteTo(buffer[:n], sender)
+			if n == 2 {
+				if buffer[1]%10 == 0 {
+					injectedDrops.Add(1)
+				} else {
+					_, _ = listener.WriteTo(buffer[:n], sender)
+				}
 			}
 		}
 	}()
 	const port, flows, messages = 12346, 4, 20
 	s.attach(t, stackOptions{
-		dial: makeFixtureDial(t, s, port, "udp4", listener.LocalAddr().String()),
+		dial: makeFixtureDial(t, s, port, "udp"+family, listener.LocalAddr().String()),
 		wire: fixturePolicy{},
 	})
 	type result struct {
-		received, lost int
-		rtt, jitter    time.Duration
-		jitterSamples  int
-		err            error
+		received      int
+		rtt, jitter   time.Duration
+		jitterSamples int
+		err           error
 	}
 	results := make(chan result, flows)
 	for flow := range flows {
@@ -534,7 +553,7 @@ func TestSyntheticUDPLossAndJitter(t *testing.T) {
 			for seq := range messages {
 				request := []byte{byte(flow), byte(seq)}
 				started := time.Now()
-				if err := client.SetDeadline(started.Add(200 * time.Millisecond)); err != nil {
+				if err := client.SetDeadline(started.Add(3 * time.Second)); err != nil {
 					measured.err = err
 					return
 				}
@@ -542,13 +561,16 @@ func TestSyntheticUDPLossAndJitter(t *testing.T) {
 					measured.err = err
 					return
 				}
-				n, err := client.Read(reply[:])
-				if isTimeout(err) && seq%10 == 0 {
-					measured.lost++
+				// The fixture deliberately drops these sequence numbers. Do not
+				// spend a timing-sensitive receive timeout proving a known drop.
+				// Every dropped sequence is followed by an echoed sequence, whose
+				// identity check detects any wrongly delivered earlier datagram.
+				if seq%10 == 0 {
 					continue
 				}
-				if err != nil || seq%10 == 0 || !bytes.Equal(reply[:n], request) {
-					measured.err = errors.New("UDP flow lost or misdelivered a reply beyond the injected loss")
+				n, err := client.Read(reply[:])
+				if err != nil || !bytes.Equal(reply[:n], request) {
+					measured.err = fmt.Errorf("UDP flow %d sequence %d: received %x: %v", flow, seq, reply[:n], err)
 					return
 				}
 				rtt := time.Since(started)
@@ -573,16 +595,15 @@ func TestSyntheticUDPLossAndJitter(t *testing.T) {
 			t.Fatal(sample.err)
 		}
 		total.received += sample.received
-		total.lost += sample.lost
 		total.rtt += sample.rtt
 		total.jitter += sample.jitter
 		total.jitterSamples += sample.jitterSamples
 	}
-	if total.received != 72 || total.lost != 8 {
-		t.Fatalf("received %d, lost %d", total.received, total.lost)
+	if total.received != 72 || injectedDrops.Load() != 8 {
+		t.Fatalf("received %d, fixture dropped %d", total.received, injectedDrops.Load())
 	}
 	t.Logf("%d flows, %d replies, %d injected drops, mean RTT %v, mean adjacent RTT variation %v",
-		flows, total.received, total.lost, total.rtt/time.Duration(total.received), total.jitter/time.Duration(total.jitterSamples))
+		flows, total.received, injectedDrops.Load(), total.rtt/time.Duration(total.received), total.jitter/time.Duration(total.jitterSamples))
 }
 
 func TestEncryptedDNSNoPlaintextFallback(t *testing.T) {
