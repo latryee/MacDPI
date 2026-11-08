@@ -31,11 +31,21 @@ final class MacDPIUITests: XCTestCase {
         app.buttons["readiness-check"].click()
         let report = app.staticTexts["diagnostics-text"]
         XCTAssertTrue(report.waitForExistence(timeout: 5))
-        // The published report reaches SwiftUI's accessibility tree after the click returns.
         let validReport = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Configuration valid", "Configuration valid"),
             object: report)
-        XCTAssertEqual(XCTWaiter.wait(for: [validReport], timeout: 5), .completed)
+        let reportResult = XCTWaiter.wait(for: [validReport], timeout: 5)
+        if reportResult != .completed {
+            let accessibility = XCTAttachment(string: "Report label: \(report.label)\nReport value: \(String(describing: report.value))\n\n\(report.debugDescription)\n\n\(app.debugDescription)")
+            accessibility.name = "Diagnostics accessibility failure"
+            accessibility.lifetime = .keepAlways
+            add(accessibility)
+            let screenshot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+            screenshot.name = "Diagnostics readiness failure"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+        }
+        XCTAssertEqual(reportResult, .completed)
         let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
         attachment.name = "MacDPI Diagnostics"; attachment.lifetime = .keepAlways
         add(attachment)

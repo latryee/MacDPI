@@ -222,7 +222,13 @@ struct ContentView: View {
                 Button("Copy report") { model.copyDiagnostics() }
                 Spacer()
             }
-            Text(model.diagnostics).accessibilityIdentifier("diagnostics-text").font(.system(.callout, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(18).background(Color.primary.opacity(0.04)).cornerRadius(10)
+            Text(model.diagnostics)
+                .font(.system(.callout, design: .monospaced))
+                .textSelection(.enabled)
+                .accessibilityLabel(model.diagnostics)
+                .accessibilityIdentifier("diagnostics-text")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18).background(Color.primary.opacity(0.04)).cornerRadius(10)
             if model.integrationMode != .personalTUN {
                 HStack { Text("Failed connections"); Spacer(); Text(String(model.snapshot.failures)).monospacedDigit() }
                 HStack { Text("Passed through"); Spacer(); Text(String(model.snapshot.passedThrough)).monospacedDigit() }
