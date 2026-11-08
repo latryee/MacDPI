@@ -3,7 +3,7 @@
   "recorded_at_utc": "2026-11-08T16:46:36.867289+00:00",
   "version": "0.3.0",
   "build": "8",
-  "status": "Final build8 package and all remote CI jobs passed; authorized GitHub preview draft contains verified latest assets",
+  "status": "Public build8 personal testing preview published; all CI jobs, package checks and anonymous download hashes passed",
   "fully_verified_release": false,
   "changes": [
     "Selectable diagnostics Text and its accessibility metadata receive a new content identity when the report changes",
@@ -64,7 +64,7 @@
     "inactive_processes_verified_before_promotion": true,
     "post_promotion_signatures_and_checksums_verified": true,
     "preserved_0_2_0_baseline": true,
-    "superseded_artifacts_moved_to_trash": false,
+    "superseded_artifacts_moved_to_trash": true,
     "raw_verification_evidence_preserved": true
   },
   "binary_sha256": {
@@ -99,15 +99,19 @@
   },
   "publication": {
     "source_uploaded_in_this_work": true,
-    "github_release_published": false,
+    "github_release_published": true,
     "reddit_post_published": false,
     "github_destination": "https://github.com/latryee/MacDPI",
     "github_publication_authorization": "Owner explicitly requested publication to latryee/MacDPI; GitHub CLI scopes and device authorization completed by owner",
     "reddit_community_selected": false,
     "github_authentication_available": true,
-    "release_draft_id": 438166384,
     "release_tag": "v0.3.0-preview.1",
-    "latest_draft_asset_digests_verified": true
+    "github_release_url": "https://github.com/latryee/MacDPI/releases/tag/v0.3.0-preview.1",
+    "github_release_id": 438166384,
+    "release_tag_commit": "c6b72519440f5183c462dd0b57846586ebca225f",
+    "anonymous_browser_downloads_verified": true,
+    "publication_record": "0.3.0-publication.json",
+    "published_asset_digests_verified": true
   },
   "remaining_validation": [
     "Longer daily reliability, repeated/longer sleep, abrupt crash and network/VPN transitions",
@@ -117,11 +121,11 @@
   "source_hygiene": {
     "candidate_files_pattern_scanned": 197,
     "private_key_or_common_token_pattern_match_files": 0,
-    "local_markdown_targets_checked": 135,
+    "local_markdown_targets_checked": 136,
     "broken_local_targets": 0,
     "scope": "Pattern scan only; not an exhaustive credential audit"
   },
-  "last_updated_at_utc": "2026-11-08T16:46:36.867289+00:00",
+  "last_updated_at_utc": "2026-11-08T16:57:32.637537+00:00",
   "source_commit": "9928a9134fe25f21616661064dec974af98b2838",
   "ci": {
     "id": 42500004385,

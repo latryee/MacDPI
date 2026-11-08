@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-08T16:57:32.637537+00:00",
+  "version": "0.3.0",
+  "build": "8",
+  "github": {
+    "repository": "latryee/MacDPI",
+    "id": 438166384,
+    "tag": "v0.3.0-preview.1",
+    "url": "https://github.com/latryee/MacDPI/releases/tag/v0.3.0-preview.1",
+    "published_at_utc": "2026-11-08T16:51:26Z",
+    "prerelease": true,
+    "release_target_commit": "c6b72519440f5183c462dd0b57846586ebca225f",
+    "compiled_source_commit": "9928a9134fe25f21616661064dec974af98b2838",
+    "ci_run_url": "https://github.com/latryee/MacDPI/actions/runs/42500004385",
+    "assets": [
+      {
+        "id": 724539989,
+        "name": "MacDPI-0.3.0-universal2-personal-adhoc.dmg",
+        "size": 11625990,
+        "digest": "sha256:1c8e4898d2b645f863a656880035bebfe9d66573f22250fbdd0041cb67c9a7d8",
+        "url": "https://github.com/latryee/MacDPI/releases/download/v0.3.0-preview.1/MacDPI-0.3.0-universal2-personal-adhoc.dmg"
+      },
+      {
+        "id": 724540461,
+        "name": "MacDPI-0.3.0-universal2-personal-adhoc.sha256",
+        "size": 218,
+        "digest": "sha256:48adfc1aaa5074fa10df20fb28548c8e901763e5c0ad06a58d2984008869a65b",
+        "url": "https://github.com/latryee/MacDPI/releases/download/v0.3.0-preview.1/MacDPI-0.3.0-universal2-personal-adhoc.sha256"
+      },
+      {
+        "id": 724540528,
+        "name": "MacDPI-0.3.0-universal2-personal-adhoc.zip",
+        "size": 10467621,
+        "digest": "sha256:2747f21ddb71857c347481f0650479bb8768c6c60690cffd6c3357e50dd03255",
+        "url": "https://github.com/latryee/MacDPI/releases/download/v0.3.0-preview.1/MacDPI-0.3.0-universal2-personal-adhoc.zip"
+      }
+    ]
+  },
+  "anonymous_download_verification": {
+    "release_url": "https://github.com/latryee/MacDPI/releases/tag/v0.3.0-preview.1",
+    "tag": "v0.3.0-preview.1",
+    "build": "8",
+    "no_authentication_cookie_or_token_sent": true,
+    "results": [
+      {
+        "name": "MacDPI-0.3.0-universal2-personal-adhoc.dmg",
+        "bytes": 11625990,
+        "sha256": "1c8e4898d2b645f863a656880035bebfe9d66573f22250fbdd0041cb67c9a7d8",
+        "anonymous_browser_url_download_verified": true
+      },
+      {
+        "name": "MacDPI-0.3.0-universal2-personal-adhoc.sha256",
+        "bytes": 218,
+        "sha256": "48adfc1aaa5074fa10df20fb28548c8e901763e5c0ad06a58d2984008869a65b",
+        "anonymous_browser_url_download_verified": true
+      },
+      {
+        "name": "MacDPI-0.3.0-universal2-personal-adhoc.zip",
+        "bytes": 10467621,
+        "sha256": "2747f21ddb71857c347481f0650479bb8768c6c60690cffd6c3357e50dd03255",
+        "anonymous_browser_url_download_verified": true
+      }
+    ]
+  },
+  "source_correspondence": {
+    "compiled_and_ci_tested_commit": "9928a9134fe25f21616661064dec974af98b2838",
+    "release_tag_commit": "c6b72519440f5183c462dd0b57846586ebca225f",
+    "difference": "Documentation and verification records only; compiled inputs unchanged"
+  },
+  "local_cleanup": {
+    "latest_app_zip_dmg_and_checksum_kept": true,
+    "superseded_personal_builds_and_compiler_caches_moved_to_trash": true,
+    "required_0_2_0_baseline_preserved": true,
+    "private_verification_evidence_preserved": true
+  },
+  "reddit": {
+    "published": false,
+    "community_selected": false,
+    "scope": "Owner deferred community selection; announcement remains a draft"
+  },
+  "limits": "Personal testing prerelease, ad hoc signed and not notarized. Build6 voice/game and build7 real sleep/shutdown evidence retain their exact scope; no build8 live TUN rerun or broad hardware/network reliability claim."
+}
