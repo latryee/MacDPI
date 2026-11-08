@@ -1,14 +1,14 @@
 {
-  "schema_version": 2,
-  "recorded_at_utc": "2026-11-08T09:17:51.584449+00:00",
+  "schema_version": 3,
+  "recorded_at_utc": "2026-11-08T16:46:36.867289+00:00",
   "version": "0.3.0",
-  "build": "7",
-  "status": "Current-Mac personal acceptance and build7 sleep/graceful-stop lifecycle passed; public testing preview prepared; GitHub authentication pending",
+  "build": "8",
+  "status": "Final build8 package and all remote CI jobs passed; authorized GitHub preview draft contains verified latest assets",
   "fully_verified_release": false,
   "changes": [
-    "SIGTERM, SIGINT and parent input/EOF request broker-acknowledged shutdown through a process-lifetime stop channel",
-    "Existing 28-second UI hard fallback targets only the captured child; no normal session timer added",
-    "TCP, UDP, TLS, DNS and route algorithms unchanged from build 6"
+    "Selectable diagnostics Text and its accessibility metadata receive a new content identity when the report changes",
+    "Removed the explicit accessibility label that recursed on macOS27; text selection is preserved",
+    "Networking/core/model/helper/engine source unchanged from live-tested build7; Go build metadata differs between rebuilds"
   ],
   "current_checks": {
     "hosted_model_passed": 29,
@@ -20,29 +20,30 @@
         "trigger": "SIGTERM",
         "exit": 3,
         "output": "CANCELLED",
-        "seconds": 0.002931875000000028
+        "seconds": 0.0017305420000000016
       },
       {
         "trigger": "SIGINT",
         "exit": 3,
         "output": "CANCELLED",
-        "seconds": 0.0032489999999998354
+        "seconds": 0.0029289999999999594
       },
       {
         "trigger": "parent-eof",
         "exit": 3,
         "output": "CANCELLED",
-        "seconds": 0.0032674169999999947
+        "seconds": 0.0019047909999998502
       }
     ],
     "cancellation_scope": "Normal-user pipes/signals and absent random broker sessions; no helper, TUN or route changes",
-    "manual_gui": "Verified stable build 7 Disabled, Enable available, Personal TUN and Automatic setup selected; no setting changed or activation requested",
-    "automated_native_ui_rerun": false,
-    "focused_independent_source_review": "No actionable findings"
-  },
-  "unchanged_source_checks": {
-    "record": "0.3.0-build6-release.json",
-    "scope": "Prior core130, loopback23, native transport4, Go full/mixed/capacity/lifecycle/race and IPC results retained; not rerun or relabeled as build7 runs"
+    "manual_gui": "Final promoted build8 Overview remained Disabled; Check readiness updated Personal TUN diagnostics under the same accessibility identifier. No configuration or activation changes.",
+    "automated_native_ui_rerun": true,
+    "swift_core_passed_per_portable_architecture": 130,
+    "native_ui_passed": 3,
+    "packaging_passed_per_portable_architecture": 14,
+    "operator_deadline_guard_cases_passed_per_portable_architecture": 4,
+    "native_stop_channel_cases_passed_per_portable_architecture": 13,
+    "ui_and_ci_record": "0.3.0-build8-ui-ci.json"
   },
   "packaging": {
     "architectures": [
@@ -50,7 +51,7 @@
       "x86_64"
     ],
     "minimum_macos": "12.0",
-    "tested_runtime": "Apple Silicon, macOS 26.6",
+    "tested_runtime": "Real TUN: Apple Silicon/macOS26.6 in build7; native model/UI CI: arm64/macOS27.0.1; portable isolated tests and builds: arm64 and Intel/macOS15",
     "intel_and_older_macos_runtime_verified": false,
     "ad_hoc_bundle_and_nested_signatures_verified": true,
     "exact_extracted_zip_verified": true,
@@ -63,17 +64,18 @@
     "inactive_processes_verified_before_promotion": true,
     "post_promotion_signatures_and_checksums_verified": true,
     "preserved_0_2_0_baseline": true,
-    "superseded_artifacts_moved_to_trash": true,
+    "superseded_artifacts_moved_to_trash": false,
     "raw_verification_evidence_preserved": true
   },
   "binary_sha256": {
-    "host": "e13017541cebe79a0fe7d15312424c4016c5f09297c953a01bc2eb03c7d9e45b",
-    "engine": "d9f75e595a6d71811aee65506c556604e028c377c64ab1a615a6924ff63987a2",
+    "host": "5ffb446aae619883709edfef8b10d970e54950b9ffa7d0ecf9f42d1db3ef6094",
+    "engine": "5014a1785391018da2a5d93f44b7e081976afe09de71a964cbd60b9ca38f6ece",
     "helper": "cb6f67cdcb99d7164425d3672c55891e7a5ca1e9d836ee8b9d7143a200735f31"
   },
   "archive_sha256": {
-    "MacDPI-0.3.0-universal2-personal-adhoc.dmg": "29e3946ac90ec07b595a7858cc6ab04a269b1e86c1517ad5997f1a740e7c6ceb",
-    "MacDPI-0.3.0-universal2-personal-adhoc.zip": "f43e0cc73121d083f3764458c976252dbbc7e56f32dd415208d13a6839148a56"
+    "MacDPI-0.3.0-universal2-personal-adhoc.sha256": "48adfc1aaa5074fa10df20fb28548c8e901763e5c0ad06a58d2984008869a65b",
+    "MacDPI-0.3.0-universal2-personal-adhoc.dmg": "1c8e4898d2b645f863a656880035bebfe9d66573f22250fbdd0041cb67c9a7d8",
+    "MacDPI-0.3.0-universal2-personal-adhoc.zip": "2747f21ddb71857c347481f0650479bb8768c6c60690cffd6c3357e50dd03255"
   },
   "live_evidence_boundary": {
     "latest_voice_gameplay_build": "6",
@@ -89,28 +91,72 @@
     "build_7_measured_sleep_seconds": 10.9668155,
     "build_7_controller_seconds": 149.746943,
     "build_7_controller_completed_within_approved_five_minutes": true,
-    "build_7_voice_gameplay_rerun": false
+    "build_7_voice_gameplay_rerun": false,
+    "current_build_live_tun_rerun": false,
+    "networking_source_changed_since_live_build7": false,
+    "newest_voice_gameplay_build": "6",
+    "current_scope": "Latest build8 changes diagnostics UI only. Real voice/game use belongs to6; physical sleep/graceful live stop belongs to7. No broader hardware/runtime claim."
   },
   "publication": {
-    "source_uploaded_in_this_work": false,
+    "source_uploaded_in_this_work": true,
     "github_release_published": false,
     "reddit_post_published": false,
     "github_destination": "https://github.com/latryee/MacDPI",
-    "github_publication_authorization": "Owner requested upload when completely finished; final validation and authentication remain",
+    "github_publication_authorization": "Owner explicitly requested publication to latryee/MacDPI; GitHub CLI scopes and device authorization completed by owner",
     "reddit_community_selected": false,
-    "github_authentication_available": false
+    "github_authentication_available": true,
+    "release_draft_id": 438166384,
+    "release_tag": "v0.3.0-preview.1",
+    "latest_draft_asset_digests_verified": true
   },
   "remaining_validation": [
-    "Longer daily reliability, repeated/longer sleep, deliberate abrupt crash and network/VPN transitions",
-    "Intel/older macOS and physical IPv6 runtime; battery/leak/physical throughput measurements",
-    "Authenticated GitHub upload and actual remote CI; Reddit community selection/rules before posting"
+    "Longer daily reliability, repeated/longer sleep, abrupt crash and network/VPN transitions",
+    "Physical Intel/older macOS TUN, physical IPv6, battery/leak/physical throughput measurements",
+    "Reddit community selection and current rules before any post; no Reddit publication authorized"
   ],
   "source_hygiene": {
-    "candidate_files_pattern_scanned": 195,
+    "candidate_files_pattern_scanned": 197,
     "private_key_or_common_token_pattern_match_files": 0,
-    "local_markdown_targets_checked": 131,
+    "local_markdown_targets_checked": 135,
     "broken_local_targets": 0,
     "scope": "Pattern scan only; not an exhaustive credential audit"
   },
-  "last_updated_at_utc": "2026-11-08T09:36:32.440585+00:00"
+  "last_updated_at_utc": "2026-11-08T16:46:36.867289+00:00",
+  "source_commit": "9928a9134fe25f21616661064dec974af98b2838",
+  "ci": {
+    "id": 42500004385,
+    "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385",
+    "head_sha": "9928a9134fe25f21616661064dec974af98b2838",
+    "status": "completed",
+    "conclusion": "success",
+    "attempt": 1,
+    "jobs": [
+      {
+        "id": 128790494411,
+        "name": "macos (macos-15-intel)",
+        "conclusion": "success",
+        "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385/job/128790494411"
+      },
+      {
+        "id": 128790494619,
+        "name": "native-ui",
+        "conclusion": "success",
+        "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385/job/128790494619"
+      },
+      {
+        "id": 128790494629,
+        "name": "macos (macos-15)",
+        "conclusion": "success",
+        "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385/job/128790494629"
+      }
+    ]
+  },
+  "historical_load_and_live_evidence": {
+    "records": [
+      "0.3.0-build6-live-personal.json",
+      "0.3.0-build6-idle.json",
+      "0.3.0-build7-sleep-shutdown.json"
+    ],
+    "scope": "Dated real usage, load and lifecycle measurements retain their original build and hardware scope; current CI results are separate"
+  }
 }

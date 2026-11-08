@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-08T16:46:36.867289+00:00",
+  "version": "0.3.0",
+  "build": "8",
+  "source_commit": "9928a9134fe25f21616661064dec974af98b2838",
+  "change": "Selectable diagnostics report identity is recreated on content changes; text selection and the exact readiness assertions remain",
+  "current_ci": {
+    "id": 42500004385,
+    "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385",
+    "head_sha": "9928a9134fe25f21616661064dec974af98b2838",
+    "status": "completed",
+    "conclusion": "success",
+    "attempt": 1,
+    "jobs": [
+      {
+        "id": 128790494411,
+        "name": "macos (macos-15-intel)",
+        "conclusion": "success",
+        "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385/job/128790494411"
+      },
+      {
+        "id": 128790494619,
+        "name": "native-ui",
+        "conclusion": "success",
+        "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385/job/128790494619"
+      },
+      {
+        "id": 128790494629,
+        "name": "macos (macos-15)",
+        "conclusion": "success",
+        "url": "https://github.com/latryee/MacDPI/actions/runs/42500004385/job/128790494629"
+      }
+    ]
+  },
+  "ci_native_cases": {
+    "hosted_model_process": 29,
+    "ui": 3
+  },
+  "prior_failures": [
+    {
+      "run": 42470473998,
+      "source": "71271b8",
+      "finding": "Intel deadline test used an independent fixed sleep; native UI read report immediately",
+      "correction": "Bounded expectations await actual lifecycle and accessible report conditions"
+    },
+    {
+      "run": 42471005138,
+      "source": "b16c591",
+      "finding": "macOS27 selectable report kept identifier on obsolete disabled AX node; updated report existed separately",
+      "evidence": "Xcode result activity query dump; adding a longer wait did not fix it"
+    },
+    {
+      "run": 42499037888,
+      "source": "4b7aef1",
+      "finding": "Explicit accessibility label on selectable Text caused recursive SwiftUI/AppKit label lookup and stack overflow on macOS27.0.1",
+      "app_exception": "EXC_BAD_ACCESS / SIGSEGV: Thread stack size exceeded due to excessive recursion",
+      "raw_app_crash_sha256": "52b632450aa98dc6e877917d324acbca01753da32b5a74494215b77057917073",
+      "correction": "Removed explicit label override; content identity encloses selectable text and stable accessibility identifier"
+    }
+  ],
+  "current_result": "All three jobs and all 29 model/process plus 3 UI cases passed on corrected source; no assertions removed",
+  "local_gui": {
+    "packaged_build8_disabled_observed": true,
+    "diagnostics_report_updated_under_same_identifier": true,
+    "settings_changed": false,
+    "enable_pressed_or_authorization_requested": false
+  },
+  "packaged_absent_broker_cancellation": [
+    {
+      "trigger": "SIGTERM",
+      "exit": 3,
+      "output": "CANCELLED",
+      "seconds": 0.0017305420000000016
+    },
+    {
+      "trigger": "SIGINT",
+      "exit": 3,
+      "output": "CANCELLED",
+      "seconds": 0.0029289999999999594
+    },
+    {
+      "trigger": "parent-eof",
+      "exit": 3,
+      "output": "CANCELLED",
+      "seconds": 0.0019047909999998502
+    }
+  ],
+  "scope": "No build8 live TUN or authenticated voice/game rerun. Build7 sleep/cleanup and build6 voice/game evidence remain separate. Networking source is unchanged; rebuilt Go metadata changes binary hashes, so byte identity is not claimed."
+}

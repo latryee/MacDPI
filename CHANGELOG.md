@@ -1,23 +1,22 @@
 # Changelog
 
-## 0.3.0 personal TUN preview
+## 0.3.0 personal TUN preview — v0.3.0-preview.1
 
-- Build 7 handles termination signals and parent disconnection through graceful shutdown, retaining the captured-child hard fallback after 28 seconds. It passed 29 hosted model, 14 packaging, four operator guard, 13 native stop-channel and three packaged-engine absent-broker cancellation checks. Universal 2 ZIP/DMG verification and Disabled GUI inspection passed; a later approved GUI trial verified physical sleep/wake, HTTPS/API before/after, graceful signal shutdown to Disabled and all eight policy/resolver cleanup checks within 149.75 seconds of a five-minute maximum. Build 6 voice/game evidence remains separate.
-
+- Build 8 recreates selectable diagnostics when report content changes and removes an explicit accessibility label that caused recursion on macOS 27. Exact UI assertions are preserved; TCP, UDP, TLS, DNS and route behavior are unchanged. All three release-source CI jobs passed: macOS 15 ARM/Intel isolated suites/builds, plus 29 model and three UI cases on macOS 27.0.1/Xcode 27.2. Its Universal 2 app, exact ZIP/DMG contents, signatures and SHA-256 checksums passed local verification; the packaged engine passed three absent-broker cancellation checks. Live evidence below belongs to the stated earlier builds; no build 8 live TUN run is claimed. [Downloads](https://github.com/latryee/MacDPI/releases/tag/v0.3.0-preview.1)
 - Added a separate ad hoc build with an unprivileged dual-stack TCP/UDP engine and session-scoped route helper.
 - Added guarded route plans, durable ownership records and recovery checks. Preserved local diagnostics and the optional signed Network Extension build.
 - Added automatic macOS administrator authorization with embedded helper hashes, private root staging and authenticated descriptor handoff. Normal Enable no longer needs a pasted Terminal command.
 - Added Automatic setup and bounded, coalesced TLS origin repair lookups while preserving ordinary System DNS and end-to-end certificate validation.
-- Added isolated packet, DNS, IPC, route, mixed-load and app lifecycle coverage. Verified real GUI activation/Disable and public HTTPS/API/WSS requests. The owner confirmed bidirectional Discord audio and a Roblox game session on one Mac/network.
-- Recorded a 496-second live resource sample. Intel/older macOS runtime, extended stability, live crash/network transitions and notarization remain unverified.
-- Build 4 adds on-demand app/engine CPU and RSS display, with unavailable/stale samples handled explicitly and no resource polling while idle. Its 126 core and 27 hosted model tests passed; the owner-participated live trial used build 3.
-- Build 5 uses neutral wording for cleanup-confirmed failures instead of attributing an unknown stop to the helper. A later build 3 stop remains unexplained and is recorded separately; extended stability is not claimed.
+- Added isolated packet, DNS, IPC, route, mixed-load and app lifecycle coverage. Earlier build 3 real-network trials verified GUI activation/Disable, public HTTPS/API and unauthenticated WebSocket requests. An older build 3 stop remains unexplained.
+- Build 4 added on-demand app/engine CPU and RSS display, with unavailable/stale samples handled explicitly and no resource polling while idle. Its 126 core and 27 hosted model tests passed; its owner-participated live evidence used build 3.
+- Build 5 adopted neutral wording for cleanup-confirmed failures instead of attributing an unknown stop to the helper.
+- Build 6 added fixed-category local failure diagnostics. Worker categories require a failed final session outcome; normal stop/cancellation does not produce a worker-failure log. Stop before readiness is normal cancellation, and known-lease detach is verified even without ownership or a journal.
+- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. Overview/Settings were manually checked while Disabled without changing settings.
+- Build 6 passed a bounded owner-approved GUI trial: Discord messaging/two-way audio and voice rejoining, Roblox gameplay/rejoining, 26 public HTTPS/API checks and all eight baseline fingerprints plus resolver restoration after Disable. No unexpected stop was observed. The monitored interval was about 25 min 44 s within a 30-minute setup/test/shutdown window. Combined sampled CPU averaged 0.231% of one core and peak RSS was 152.64 MiB with uncontrolled owner traffic. Exact 30-minute Active stability is not claimed.
+- A separate build 6 practical quiet sample covered 61 samples over 121.27 seconds, averaging 0.066% combined CPU with 141.41 MiB peak RSS (148.28 MB). It met the resource targets only for that interval; cleanup passed, but sleep was not performed and compliance with that test's five-minute window was unproven. Added a non-root, best-effort operator deadline guard with four passing isolated tests. [Evidence and limits](docs/TUN_VERIFICATION.md#build-6-practical-idle-trial)
+- Build 7 handles termination signals and parent disconnection through graceful shutdown, retaining the captured-child hard fallback after 28 seconds. It passed 29 hosted model, 14 packaging, four operator guard, 13 native stop-channel and three packaged-engine absent-broker cancellation checks. A later approved GUI trial verified 10.97 seconds of physical sleep, HTTPS/API before/after wake and graceful signal shutdown to Disabled, restoring all eight policy fingerprints, resolver, route, interface and owned processes. It completed in 149.75 seconds within a five-minute maximum. Build 6 voice/game evidence remains separate.
 
-- Build 6 adds fixed-category local failure diagnostics. Worker categories require a failed final session outcome; normal stop/cancellation does not produce a worker-failure log. Stop before readiness is normal cancellation, and known-lease detach is verified even without ownership or a journal.
-- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. Build 6 Overview/Settings were manually checked while Disabled without changing settings. The three native UI cases remain prior automated results; the later owner-approved live trial is recorded separately.
-
-- Build 6 passed a bounded owner-approved GUI trial: Discord messaging/two-way audio and voice rejoining, Roblox gameplay/rejoining, 26 public HTTPS/API checks, and all eight baseline fingerprints plus resolver restoration after Disable. No unexpected stop was observed. The monitored interval was about 25 min 44 s, not exact 30-minute Active stability. Combined sampled CPU averaged 0.231% of one core and peak RSS was 152.64 MiB with uncontrolled owner traffic; the older stop remains unexplained.
-- A separate build 6 practical idle sample covered 61 samples over 121.27 seconds, averaging 0.066% combined CPU with 141.41 MiB peak RSS (148.28 MB). It met the resource targets only for that interval; cleanup passed, but sleep was not performed and operator compliance with the five-minute test window was unproven. Added a non-root, best-effort operator deadline guard with four passing isolated tests; it is separate from the normal app and cannot run during sleep. [Evidence and limits](docs/TUN_VERIFICATION.md#build-6-practical-idle-trial).
+The preview is ad hoc signed and not notarized. Real TUN runtime evidence is limited to Apple Silicon/macOS 26.6. Physical Intel/older macOS, physical IPv6, extended daily reliability, abrupt crash recovery and network/VPN transitions remain unverified. [Compatibility](COMPATIBILITY.md) · [Verification](docs/TUN_VERIFICATION.md)
 
 ## 0.2.0 — local review
 
@@ -25,7 +24,7 @@
 - Connected native Enable, status, Disable, removal and emergency stop to the approved integration lifecycle.
 - Added public numeric TCP/UDP flow policy, IPv4/IPv6 datagram forwarding and explicit DNS routing with split-domain preservation.
 - Protected the optional local CONNECT listener with a per-launch credential and retained the existing TLS engine.
-- Added isolated flow, DNS, lifecycle and packaging verification. Installed operation, Developer ID distribution and live desktop acceptance are pending.
+- Added isolated flow, DNS, lifecycle and packaging verification. Installed operation, Developer ID distribution and live desktop acceptance of these optional extension paths remained pending.
 
 ## 0.1.0 — unreleased
 
@@ -39,5 +38,3 @@
 - Universal 2 app and compile-only transparent system-extension provider.
 - Local parser/lifecycle/model/UI/socket/TLS tests, reproducible benchmarks, CI and review packaging.
 - MIT license, privacy/security documentation and release preparation.
-
-Universal real-network coverage, UDP-specific circumvention, older OS/Intel runtime coverage, legacy provider activation, Developer ID signing and notarization remain unverified or blocked. No public release has been published.

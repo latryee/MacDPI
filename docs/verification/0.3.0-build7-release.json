@@ -1,0 +1,116 @@
+{
+  "schema_version": 2,
+  "recorded_at_utc": "2026-11-08T09:17:51.584449+00:00",
+  "version": "0.3.0",
+  "build": "7",
+  "status": "Current-Mac personal acceptance and build7 sleep/graceful-stop lifecycle passed; public testing preview prepared; GitHub authentication pending",
+  "fully_verified_release": false,
+  "changes": [
+    "SIGTERM, SIGINT and parent input/EOF request broker-acknowledged shutdown through a process-lifetime stop channel",
+    "Existing 28-second UI hard fallback targets only the captured child; no normal session timer added",
+    "TCP, UDP, TLS, DNS and route algorithms unchanged from build 6"
+  ],
+  "current_checks": {
+    "hosted_model_passed": 29,
+    "packaging_passed": 14,
+    "operator_deadline_guard_cases_passed": 4,
+    "native_stop_channel_cases_passed": 13,
+    "packaged_go_linked_engine_absent_broker_cancellation_cases": [
+      {
+        "trigger": "SIGTERM",
+        "exit": 3,
+        "output": "CANCELLED",
+        "seconds": 0.002931875000000028
+      },
+      {
+        "trigger": "SIGINT",
+        "exit": 3,
+        "output": "CANCELLED",
+        "seconds": 0.0032489999999998354
+      },
+      {
+        "trigger": "parent-eof",
+        "exit": 3,
+        "output": "CANCELLED",
+        "seconds": 0.0032674169999999947
+      }
+    ],
+    "cancellation_scope": "Normal-user pipes/signals and absent random broker sessions; no helper, TUN or route changes",
+    "manual_gui": "Verified stable build 7 Disabled, Enable available, Personal TUN and Automatic setup selected; no setting changed or activation requested",
+    "automated_native_ui_rerun": false,
+    "focused_independent_source_review": "No actionable findings"
+  },
+  "unchanged_source_checks": {
+    "record": "0.3.0-build6-release.json",
+    "scope": "Prior core130, loopback23, native transport4, Go full/mixed/capacity/lifecycle/race and IPC results retained; not rerun or relabeled as build7 runs"
+  },
+  "packaging": {
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "minimum_macos": "12.0",
+    "tested_runtime": "Apple Silicon, macOS 26.6",
+    "intel_and_older_macos_runtime_verified": false,
+    "ad_hoc_bundle_and_nested_signatures_verified": true,
+    "exact_extracted_zip_verified": true,
+    "exact_readonly_dmg_verified_and_detached": true,
+    "zip_and_dmg_checksums_verified": true,
+    "developer_id_signed": false,
+    "notarized": false,
+    "stable_app_path": "build/personal/release/MacDPI.app",
+    "stable_archive_directory": "build/personal/dist",
+    "inactive_processes_verified_before_promotion": true,
+    "post_promotion_signatures_and_checksums_verified": true,
+    "preserved_0_2_0_baseline": true,
+    "superseded_artifacts_moved_to_trash": true,
+    "raw_verification_evidence_preserved": true
+  },
+  "binary_sha256": {
+    "host": "e13017541cebe79a0fe7d15312424c4016c5f09297c953a01bc2eb03c7d9e45b",
+    "engine": "d9f75e595a6d71811aee65506c556604e028c377c64ab1a615a6924ff63987a2",
+    "helper": "cb6f67cdcb99d7164425d3672c55891e7a5ca1e9d836ee8b9d7143a200735f31"
+  },
+  "archive_sha256": {
+    "MacDPI-0.3.0-universal2-personal-adhoc.dmg": "29e3946ac90ec07b595a7858cc6ab04a269b1e86c1517ad5997f1a740e7c6ceb",
+    "MacDPI-0.3.0-universal2-personal-adhoc.zip": "f43e0cc73121d083f3764458c976252dbbc7e56f32dd415208d13a6839148a56"
+  },
+  "live_evidence_boundary": {
+    "latest_voice_gameplay_build": "6",
+    "owner_bidirectional_audio_gameplay_rejoining_confirmed": true,
+    "latest_voice_gameplay_record": "0.3.0-build6-live-personal.json",
+    "idle_record": "0.3.0-build6-idle.json",
+    "inconclusive_sleep_and_guarded_stop_record": "0.3.0-build6-guarded-stop.json",
+    "physical_sleep_wake_verified": true,
+    "build_7_real_tun_signal_cleanup_verified": true,
+    "older_build_3_stop_cause": "unknown",
+    "thirty_minute_active_stability_verified": false,
+    "build_7_sleep_shutdown_record": "0.3.0-build7-sleep-shutdown.json",
+    "build_7_measured_sleep_seconds": 10.9668155,
+    "build_7_controller_seconds": 149.746943,
+    "build_7_controller_completed_within_approved_five_minutes": true,
+    "build_7_voice_gameplay_rerun": false
+  },
+  "publication": {
+    "source_uploaded_in_this_work": false,
+    "github_release_published": false,
+    "reddit_post_published": false,
+    "github_destination": "https://github.com/latryee/MacDPI",
+    "github_publication_authorization": "Owner requested upload when completely finished; final validation and authentication remain",
+    "reddit_community_selected": false,
+    "github_authentication_available": false
+  },
+  "remaining_validation": [
+    "Longer daily reliability, repeated/longer sleep, deliberate abrupt crash and network/VPN transitions",
+    "Intel/older macOS and physical IPv6 runtime; battery/leak/physical throughput measurements",
+    "Authenticated GitHub upload and actual remote CI; Reddit community selection/rules before posting"
+  ],
+  "source_hygiene": {
+    "candidate_files_pattern_scanned": 195,
+    "private_key_or_common_token_pattern_match_files": 0,
+    "local_markdown_targets_checked": 131,
+    "broken_local_targets": 0,
+    "scope": "Pattern scan only; not an exhaustive credential audit"
+  },
+  "last_updated_at_utc": "2026-11-08T09:36:32.440585+00:00"
+}
