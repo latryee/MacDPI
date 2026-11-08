@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at_utc": "2026-11-07T23:48:33Z",
-  "last_updated_at_utc": "2026-11-08T00:47:04.826114+00:00",
+  "last_updated_at_utc": "2026-11-08T01:27:14.026129+00:00",
   "version": "0.3.0",
   "build": "6",
   "status": "Build6 scoped personal acceptance passed; preview prepared; broader validation and publication approval pending",
@@ -53,7 +53,9 @@
       "settings_changed": false,
       "enable_pressed_or_authorization_requested": false,
       "prior_unavailability": "An earlier inspection could not proceed while the Mac was locked; no alternative unlock mechanism was used"
-    }
+    },
+    "operator_deadline_guard_cases_passed": 4,
+    "operator_deadline_guard_live_fallback_verified": false
   },
   "packaging": {
     "architectures": [
@@ -109,7 +111,9 @@
   },
   "live_evidence_boundary": {
     "owner_two_way_discord_audio_and_roblox_gameplay_build": "6",
-    "previous_owner_confirmed_builds": ["3"],
+    "previous_owner_confirmed_builds": [
+      "3"
+    ],
     "latest_live_build_6_activation_verified": true,
     "later_build_3_stop_cause": "unknown",
     "later_stop_fixed_claimed": false,
@@ -133,5 +137,11 @@
     "Longer daily reliability sampling; live failure, sleep/wake and network/VPN transitions",
     "Intel, older macOS and physical IPv6 runtime coverage",
     "Remote CI execution and selected Reddit community rules before publication"
-  ]
+  ],
+  "performance_followup": {
+    "record": "0.3.0-build6-idle.json",
+    "practical_foreground_idle_sample_verified": true,
+    "physical_sleep_wake_verified": false,
+    "quiet_trial_approved_window_compliance": "not demonstrated"
+  }
 }

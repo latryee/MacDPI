@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-08T01:27:14.026129+00:00",
+  "version": "0.3.0",
+  "build": "6",
+  "result": "Practical foreground-quiet CPU/RSS sample and independent restoration verified; sleep/wake not performed; approved-window compliance unproven",
+  "approval": {
+    "maximum_seconds": 300,
+    "enable_requested_at_utc": "2026-11-08T01:05:02.540449+00:00",
+    "first_post_disable_record_at_utc": "2026-11-08T01:11:01.324645+00:00",
+    "post_disable_timestamp_upper_bound_seconds": 358.5795040130615,
+    "window_compliance": "not demonstrated",
+    "boundary": "The GUI already showed Disabled before this post-Disable timestamp. Its exact stop instant was not recorded; do not treat the late timestamp as proof of the exact duration of interception. The completion record was later than the approved window.",
+    "operator_timing_failure_disclosed_to_owner": true
+  },
+  "idle_measurement": {
+    "samples": 61,
+    "awake_interval_seconds": 121.27283808333333,
+    "cpu_percent_one_core": 0.06596695621572536,
+    "first_rss_mib": 141.015625,
+    "last_rss_mib": 141.40625,
+    "peak_sampled_rss_mib": 141.40625,
+    "estimated_sleep_during_idle_seconds": -1.4210854715202004e-14,
+    "scope": "Owner-requested foreground quiet, with no operator network probes during this interval; background OS traffic may remain. App/engine/helper counted.",
+    "peak_sampled_rss_decimal_mb": 148.2752,
+    "observed_rss_change_mib": 0.390625,
+    "owner_confirmation": "Durdurdum; Mac boşta",
+    "cpu_target_under_one_percent_in_this_sample": true,
+    "memory_target_under_150_decimal_mb_in_this_sample": true,
+    "limits": "Practical owner-confirmed foreground quiet, not proof of zero background traffic, battery impact, physical footprint or a long-term memory bound."
+  },
+  "sleep_wake": {
+    "performed": false,
+    "final_clock_observation": {
+      "awake_seconds": 230.1715437083333,
+      "continuous_seconds": 230.171546375,
+      "estimated_sleep_seconds": 2.66666668835569e-06,
+      "bracket_uncertainty_seconds": 7.374999999999999e-06
+    },
+    "boundary": "No substantial continuous-minus-absolute clock gap exceeded the bracket uncertainty. No physical sleep/wake or post-wake networking result is claimed."
+  },
+  "restoration": {
+    "recorded_at_utc": "2026-11-08T01:11:01.324645+00:00",
+    "matched_categories": [
+      "dns",
+      "interfaces",
+      "network-policy",
+      "physical-defaults",
+      "primary-service",
+      "protected-prefixes",
+      "proxies",
+      "service-order"
+    ],
+    "differed_categories": [],
+    "all_eight_match": true,
+    "resolver_snapshot_matches": true,
+    "public_route_restored": true,
+    "engine_and_helper_absent": true,
+    "own_stage_absent": true,
+    "ordinary_https_passed": true
+  },
+  "test_method_correction": {
+    "operator_deadline_guard_added": "scripts/test-session-deadline.py",
+    "isolated_cases_passed": 4,
+    "scope": "Non-root same-user process identity pinning, selected-child SIGTERM, disarm/refusal and backward-wall-clock regression. No live guard fallback is claimed tested.",
+    "limits": "Best-effort signal deadline only; inspection/scheduling takes time and it cannot execute during machine sleep. Place it before the approved end with cleanup headroom and verify restoration independently.",
+    "normal_application_session_timer_added": false
+  },
+  "published": false
+}

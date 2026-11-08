@@ -15,6 +15,7 @@
 - Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. Build 6 Overview/Settings were manually checked while Disabled without changing settings. The three native UI cases remain prior automated results; the later owner-approved live trial is recorded separately.
 
 - Build 6 passed a bounded owner-approved GUI trial: Discord messaging/two-way audio and voice rejoining, Roblox gameplay/rejoining, 26 public HTTPS/API checks, and all eight baseline fingerprints plus resolver restoration after Disable. No unexpected stop was observed. The monitored interval was about 25 min 44 s, not exact 30-minute Active stability. Combined sampled CPU averaged 0.231% of one core and peak RSS was 152.64 MiB with uncontrolled owner traffic; the older stop remains unexplained.
+- A separate build 6 practical idle sample covered 61 samples over 121.27 seconds, averaging 0.066% combined CPU with 141.41 MiB peak RSS (148.28 MB). It met the resource targets only for that interval; cleanup passed, but sleep was not performed and operator compliance with the five-minute test window was unproven. Added a non-root, best-effort operator deadline guard with four passing isolated tests; it is separate from the normal app and cannot run during sleep. [Evidence and limits](docs/TUN_VERIFICATION.md#build-6-practical-idle-trial).
 
 ## 0.2.0 — local review
 

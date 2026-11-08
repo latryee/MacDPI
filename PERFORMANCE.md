@@ -2,6 +2,12 @@
 
 MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait, GUI in local mode and approved physical TUN sessions. Physical throughput, strict enabled-idle, battery and long-term stability still need dedicated measurements. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
 
+## Build 6 practical idle sample
+
+A separate November 8 session measured 61 app/engine/helper samples over 121.272838 seconds after the owner confirmed foreground activity had stopped. No operator HTTP probes ran during this interval; background OS traffic may remain. Combined CPU averaged 0.065966956% of one core. Peak simultaneous sampled RSS was 141.40625 MiB, about 148.2752 MB; first/last RSS was 141.015625/141.40625 MiB. The sample met the below-1% CPU and below-150 MB RSS targets for this interval only. It does not establish zero network traffic, battery use, physical footprint or a long-term memory/leak bound.
+
+All eight network-policy fingerprints and the resolver matched after Disable; the public route was restored, the engine/helper and session staging directory were gone, and ordinary HTTPS passed. Sleep was not performed, and no sleep gap beyond clock-measurement uncertainty was measured. The operator did not establish shutdown within the approved five-minute window: the first timestamp captured after observing Disabled was 358.5795 seconds after the Enable request. This is an upper bound, not the exact Active duration; the GUI stop instant was not captured. Timing compliance is therefore unproven; this is an operator test-control failure, not an identified application defect. [Idle measurement and timing record](docs/verification/0.3.0-build6-idle.json).
+
 ## Build 6 bounded live trial
 
 On November 8, 2026, 307 passive app/engine/helper samples covered 1543.679 seconds, about 25 min 44 s, while the owner used the Mac. Combined CPU averaged 0.230617894% of one core. Peak simultaneous sampled RSS was 152.640625 MiB, about 160.055 MB; first/last combined RSS was 134.125/147.65625 MiB. Traffic was uncontrolled. These values do not establish strict idle consumption, a memory-leak or growth bound, battery life or physical footprint, and do not verify the idle memory target. The earlier 496-second build 3 sample remains a separate historical measurement.

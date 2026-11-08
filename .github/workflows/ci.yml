@@ -24,6 +24,8 @@ jobs:
         run: swift test --scratch-path build/swift
       - name: Release configuration and signing gates
         run: python3 -m unittest discover -s Tests/PackagingTests
+      - name: Isolated test deadline guard
+        run: python3 -m unittest discover -s Tests/OperatorTests
       - name: Release engine and native TLS fixture
         run: |
           swift build --scratch-path build/swift -c release
@@ -56,13 +58,23 @@ jobs:
   native-ui:
     runs-on: xcode-27
     timeout-minutes: 15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Verify native project toolchain
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          version = subprocess.check_output(['xcodebuild', '-version'], text=True)
+          print(version, end='')
+          if version.splitlines()[0] != 'Xcode 27.2':
+              raise SystemExit('The native project requires Xcode 27.2.')
+          PY
       - name: Native model and UI lifecycle
         run: |
           runner_arch="$(uname -m)"
           mkdir -p build/reports
-          xcodebuild -version
           xcodebuild -project MacDPI.xcodeproj -scheme MacDPI -configuration Debug \
             -derivedDataPath build/xcode -parallel-testing-enabled NO \
             -test-timeouts-enabled YES -maximum-test-execution-time-allowance 60 \

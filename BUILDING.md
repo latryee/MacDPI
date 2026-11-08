@@ -50,3 +50,15 @@ Update the shared marketing version and advance the build number with `scripts/s
 Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The current Debug CLI passed 23 loopback scenarios; four native TCP/UDP IPv4/IPv6 scenarios, the full Go suite with 15-second mixed traffic per family, capacity/lifecycle checks and native IPC also passed. Exact archives, signatures and post-promotion checksums were verified. [Current release proof](docs/verification/0.3.0-release-readiness.json).
 
 Build 6 received a manual read-only Overview/Settings check while Disabled. The three automated native UI cases remain an earlier run; no automated UI suite was rerun. No setting was changed. A later approved build 6 GUI trial passed personal acceptance and verified Disable/restoration. Its 307 passive samples covered about 25 min 44 s within a maximum 30-minute setup/test/shutdown window; exact 30-minute Active stability is not claimed. [Live record](docs/verification/0.3.0-build6-live-personal.json).
+
+The native CI job selects Xcode 27.2 explicitly on the public-preview `xcode-27` image and checks that version before opening the project. The portable macOS 15 jobs build through compiler scripts. This configuration has not yet been run remotely. [Hosted runner labels](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), [November 4 image inventory](https://github.com/actions/runner-images/blob/releases/xcode-27-arm64/20261104/images/macos/xcode-27-arm64-Readme.md).
+
+## Bounded manual network tests
+
+Normal app sessions have no development-trial timer. For an explicitly approved live test, `scripts/test-session-deadline.py` provides an independent, non-root fallback for one pinned user-owned engine process. Start it with the expected executable, PID and a deadline earlier than the approved end, leaving cleanup headroom. It refuses a different executable or user and never starts a helper or changes network settings. Prefer normal GUI Disable; if the same process remains at the fallback deadline, it sends SIGTERM. Verify the helper, interface, routes and settings independently afterward.
+
+This is a best-effort signal deadline, not proof that restoration finished by that instant. Identity inspection takes time, and the guard cannot run during machine sleep. A disarm marker should be used only after normal shutdown has been verified. The isolated tests use disposable user-owned processes and do not activate TUN:
+
+```sh
+python3 -m unittest discover -s Tests/OperatorTests -v
+```
