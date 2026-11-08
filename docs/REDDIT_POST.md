@@ -16,11 +16,11 @@ It uses a local `utun` interface, a separate unprivileged TCP/UDP engine and TLS
 
 What has worked on the development Mac/network:
 
-- The owner confirmed Discord audio in both directions and joining and staying in a Roblox game.
-- Certificate-verified public HTTPS, Discord's API and an unauthenticated Gateway WebSocket passed through the real tunnel.
+- On build 6, the owner confirmed Discord messaging/audio in both directions, a real Roblox game and rejoining both services. The owner reported no noticeable delay; RTT and exact use minutes were not measured.
+- All 26 public HTTPS/API checks across 13 rounds passed over the build 6 tunnel. Disable restored all eight policy fingerprints and the resolver baseline, with the interface/helper/engine cleaned up. Unauthenticated Gateway WebSocket evidence is from the earlier build 3 trial.
 - Local tests cover TCP/UDP integrity, DNS validation, route failure/cleanup and bounded resource handling. The build produces Universal 2 app, ZIP and DMG artifacts with SHA-256 checksums.
 
-**This is still a testing preview.** The live voice/game trial used an earlier build; the later UI/diagnostic changes have separate local verification. One later session stopped unexpectedly with verified cleanup, and its cause is still being investigated. Extended stability, sleep/wake, reconnect and Intel/older-macOS runtime need more testing. UDP forwarding does not mean every UDP or QUIC block can be bypassed.
+**This is still a testing preview.** The latest build 6 trial had 307 resource samples across about 25 min 44 s within an approved maximum 30-minute setup/test/shutdown window. No unexpected stop was observed; this is not exact 30-minute Active stability. CPU averaged 0.231% of one core and peak sampled app/engine/helper RSS was 152.64 MiB with uncontrolled owner traffic. An older build 3 stop remains unexplained. Sleep/wake, live crash/network transitions, broader reconnect coverage and Intel/older-macOS runtime need more testing. UDP forwarding does not mean every UDP or QUIC block can be bypassed.
 
 The package is ad hoc signed, **not notarized**. If macOS declines a downloaded copy, build from reviewed source rather than weakening Gatekeeper or other system protections. The code targets macOS 12 and includes Intel/Apple Silicon slices; runtime evidence so far is Apple Silicon/macOS 26.6.
 

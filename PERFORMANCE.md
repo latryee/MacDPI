@@ -1,6 +1,14 @@
 # Performance
 
-MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait, GUI in local mode and an approved physical TUN session. Physical throughput, strict enabled-idle, battery and long-term stability still need dedicated measurements. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+MacDPI 0.3.0 Personal TUN has separate measurements for the synthetic packet path, authorization wait, GUI in local mode and approved physical TUN sessions. Physical throughput, strict enabled-idle, battery and long-term stability still need dedicated measurements. [0.3.0 verification and measurements](docs/TUN_VERIFICATION.md).
+
+## Build 6 bounded live trial
+
+On November 8, 2026, 307 passive app/engine/helper samples covered 1543.679 seconds, about 25 min 44 s, while the owner used the Mac. Combined CPU averaged 0.230617894% of one core. Peak simultaneous sampled RSS was 152.640625 MiB, about 160.055 MB; first/last combined RSS was 134.125/147.65625 MiB. Traffic was uncontrolled. These values do not establish strict idle consumption, a memory-leak or growth bound, battery life or physical footprint, and do not verify the idle memory target. The earlier 496-second build 3 sample remains a separate historical measurement.
+
+The owner confirmed messaging/two-way voice, a real Roblox game and rejoining both services, and reported no noticeable delay. That is qualitative feedback, not measured zero added latency. Voice/game RTT and exact use minutes were not quantified. All 26 fixed public HTTPS/API requests across 13 rounds passed with the public route on the tunnel. No unexpected stop was observed in this trial.
+
+The approved maximum 30-minute window included setup and shutdown. Enable was requested at 03:14:40, Disable at 03:43:07 and restoration verified at 03:44:01 Europe/Istanbul. This does not constitute an exact 30-minute Active stability test. The one-second in-app reading of 3.4% CPU and 129.5 MB covered host/engine only, excluded the helper, and is not the continuous three-process average. [Sanitized build 6 record](docs/verification/0.3.0-build6-live-personal.json).
 
 During the owner-participated voice/game trial on November 7, 100 passive process samples covered 496.17 seconds. The app, engine and helper together averaged 0.411% CPU with a peak combined RSS of 130.33 MiB (about 136.7 MB). Their combined first/last RSS was 124.25/124.97 MiB. The owner reported two-way Discord audio and remaining in a Roblox game, but activity was not controlled or correlated with each sample. These results describe that short enabled session. They do not establish strict idle usage, a memory-growth bound, battery life or quantified voice/game latency. [Sanitized live evidence](docs/verification/0.3.0-live-personal.json).
 

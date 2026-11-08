@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-08T00:47:04.826114+00:00",
+  "version": "0.3.0",
+  "build": "6",
+  "result": "Scoped personal acceptance passed: GUI Enable, owner two-way Discord voice and Roblox gameplay/reconnect, GUI Disable and independent baseline restoration",
+  "approval": {
+    "maximum_trial_seconds": 1800,
+    "scope": "GUI session helper/routes, fixed public HTTPS/API probes, passive CPU/RSS and window close/reopen. Owner handled macOS authorization and account/audio/game actions. DNS/proxy/VPN settings were not changed.",
+    "enable_requested_at_utc": "2026-11-08T00:14:40.146099+00:00",
+    "disable_requested_at_utc": "2026-11-08T00:43:07.309368+00:00",
+    "restoration_verified_at_utc": "2026-11-08T00:44:01.872979+00:00",
+    "all_final_checks_within_approved_window": true
+  },
+  "runtime": {
+    "architecture": "arm64",
+    "macos": "26.6",
+    "packaged_architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "minimum_macos_target": "12.0",
+    "intel_older_macos_and_physical_ipv6_runtime_verified": false
+  },
+  "gui": {
+    "active_with_helper_verified_routes_observed": true,
+    "pre_shutdown_active_observed": true,
+    "normal_disable_reached_disabled_with_helper_verified_detach": true,
+    "manual_proxies_or_terminal_commands_needed": false,
+    "one_second_resource_sample": {
+      "cpu_percent_one_core": 3.4,
+      "memory_mb_displayed": 129.5,
+      "scope": "App and engine only; helper excluded; not the continuous three-process mean"
+    },
+    "window_action": "Close action followed by AX observation showed a new Active window. The same session remained running; a prolonged hidden-window interval was not established.",
+    "startup_boundary": "An initial engine instance was replaced while authorization was pending, before the observed Active session. Its terminal UI state was not captured, so its exact end reason is not asserted. No real pre-readiness cancellation branch success is claimed.",
+    "automated_native_ui_suite_rerun": false
+  },
+  "public_probes": {
+    "rounds": 13,
+    "requests": 26,
+    "all_active_requests_passed_with_certificate_validation": true,
+    "fixed_endpoints": [
+      "https://example.com/",
+      "https://discord.com/api/v10/gateway"
+    ],
+    "baseline": [
+      {
+        "label": "ordinary",
+        "curl_exit": 0,
+        "valid": true,
+        "http_and_total_seconds": "200 0.221732"
+      },
+      {
+        "label": "discord_api",
+        "curl_exit": 60,
+        "valid": false,
+        "http_and_total_seconds": "000 0.093141"
+      }
+    ],
+    "after_disable": [
+      {
+        "label": "ordinary",
+        "curl_exit": 0,
+        "valid": true,
+        "http_and_total_seconds": "200 0.165497"
+      },
+      {
+        "label": "discord_api",
+        "curl_exit": 60,
+        "valid": false,
+        "http_and_total_seconds": "000 0.092579"
+      }
+    ],
+    "public_route_captured_every_round": true,
+    "https_request_timings_seconds": {
+      "ordinary": {
+        "minimum": 0.161992,
+        "median": 0.204642,
+        "maximum": 0.346099
+      },
+      "discord_api": {
+        "minimum": 0.177953,
+        "median": 0.362482,
+        "maximum": 0.394314
+      }
+    },
+    "timing_scope": "Complete HTTPS request times; not WAN TCP-connect RTT, voice RTT, game latency or a controlled before/after comparison"
+  },
+  "owner_real_application_reports": {
+    "discord_messages_and_bidirectional_voice": "Mesajlar ve iki yönlü ses çalışıyor",
+    "roblox_actual_game_session": "Oyuna girdim ve bağlı kaldım",
+    "discord_rejoin_with_bidirectional_voice": "Yeniden katıldım; iki yönlü ses çalışıyor",
+    "roblox_rejoin_and_remain_connected": "Tekrar oyuna girdim ve bağlı kaldım",
+    "quality": "Baya kullandım hiç gecikme olmadı",
+    "scope": "Qualitative owner reports in this build6 session. Exact application-use minutes, authentication sequence, voice/game RTT, loss and jitter were not quantified. Agent did not inspect authenticated sessions or microphone contents."
+  },
+  "resources": {
+    "samples": 307,
+    "wall_seconds": 1543.707,
+    "stop_reason": "operator-request",
+    "scope": "Same pinned app/engine/helper identities, sampled approximately every5seconds. Cumulative CPU deltas divided by this monitor process monotonic interval. Uncontrolled owner traffic; not strict idle, battery, physical footprint or a bound on memory growth.",
+    "sample_interval_seconds": 1543.679,
+    "combined_cpu_percent_one_core": 0.23061789400516552,
+    "first_rss_mib": 134.125,
+    "last_rss_mib": 147.65625,
+    "peak_sampled_rss_mib": 152.640625,
+    "first_per_role_rss_mib": {
+      "host": 107.328125,
+      "engine": 17.703125,
+      "helper": 9.09375
+    },
+    "last_per_role_rss_mib": {
+      "host": 103.515625,
+      "engine": 35.84375,
+      "helper": 8.296875
+    },
+    "observed_combined_rss_change_mib": 13.53125,
+    "peak_sampled_rss_decimal_mb": 160.055296
+  },
+  "duration_boundary": {
+    "sample_interval_seconds": 1543.679,
+    "enable_request_to_disable_request_seconds": 1707.163269,
+    "workflow_duration_clock": "Difference between the recorded UTC request labels; the passive resource interval uses its own monotonic clock",
+    "strict_thirty_minutes_active_verified": false,
+    "scope": "The complete authorized test window includes authorization and cleanup headroom. The 1543.679-second process sample is about25min44s, not an exact30minute continuous Active-state benchmark."
+  },
+  "restoration": {
+    "recorded_at_utc": "2026-11-08T00:44:01.872979+00:00",
+    "matched_policy_categories": [
+      "dns",
+      "interfaces",
+      "network-policy",
+      "physical-defaults",
+      "primary-service",
+      "protected-prefixes",
+      "proxies",
+      "service-order"
+    ],
+    "differing_policy_categories": [],
+    "all_eight_policy_fingerprints_match": true,
+    "resolver_snapshot_matches": true,
+    "public_route_restored": true,
+    "test_capture_interface_names_absent": true,
+    "engine_and_helper_absent": true,
+    "own_staging_directory_absent": true,
+    "ordinary_https_passed": true
+  },
+  "binary_sha256": {
+    "host": "d96af06e7b646e0c885b3c4f1523ed7f8aa21a3abf8f0fac7c5450ae97609c6e",
+    "engine": "15f8e579f3c6850b657e85ea68360c9226a057128d886ae2555a71f7dd631d2b",
+    "helper": "cb6f67cdcb99d7164425d3672c55891e7a5ca1e9d836ee8b9d7143a200735f31"
+  },
+  "archive_sha256": {
+    "MacDPI-0.3.0-universal2-personal-adhoc.zip": "7392df086152b19de2cdeea500369717fa54a5a800bbea3760ac96cad50166e5",
+    "MacDPI-0.3.0-universal2-personal-adhoc.dmg": "f4724e07db2ae9bb0482493a05e06c21837d46bd53ca592128a670185a02759b"
+  },
+  "limits": {
+    "unexpected_stop_observed_during_this_trial": false,
+    "historical_build3_late_stop_cause": "unknown",
+    "historical_late_stop_fixed_claimed": false,
+    "live_forced_failure_sleep_wake_network_vpn_switching_verified": false,
+    "broader_daily_reliability_verified": false,
+    "published": false
+  }
+}

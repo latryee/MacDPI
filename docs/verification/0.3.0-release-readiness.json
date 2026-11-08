@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "recorded_at_utc": "2026-11-07T23:48:33Z",
-  "last_updated_at_utc": "2026-11-07T23:56:17Z",
+  "last_updated_at_utc": "2026-11-08T00:47:04.826114+00:00",
   "version": "0.3.0",
   "build": "6",
-  "status": "Local preview candidate prepared; final live validation and publication approval pending",
+  "status": "Build6 scoped personal acceptance passed; preview prepared; broader validation and publication approval pending",
   "fully_verified_release": false,
   "tests": {
     "swift_core_passed": 130,
@@ -18,7 +18,10 @@
     "native_tun_ipc_scope": "Descriptor handoff, stop, timeout, EOF, live audit token and code hash; no real TUN or route changes",
     "go_worker_full_normal_suite_passed": true,
     "mixed_tcp_udp_fixture_seconds_per_family": 15,
-    "mixed_tcp_udp_fixture_families": ["IPv4", "IPv6"],
+    "mixed_tcp_udp_fixture_families": [
+      "IPv4",
+      "IPv6"
+    ],
     "tcp_capacity_fixture_flows": 96,
     "udp_capacity_fixture_flows": 64,
     "capacity_scope": "Synthetic IPv4 packet paths to loopback peers; rejects excess admission, preserves existing flows and verifies cancellation cleanup. IPv6 has separate integrity and mixed-load coverage.",
@@ -53,7 +56,10 @@
     }
   },
   "packaging": {
-    "architectures": ["arm64", "x86_64"],
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
     "minimum_macos": "12.0",
     "tested_runtime": "Apple Silicon, macOS 26.6",
     "intel_and_older_macos_runtime_verified": false,
@@ -70,7 +76,14 @@
       "expected_binary_hashes_checked_before_replacement": true,
       "signature_and_archive_checks_repeated_after_move": true,
       "superseded_personal_build_and_candidate_caches_moved_to_trash": true,
-      "other_generated_compiler_and_test_caches_moved_to_trash": ["tun-go-cache", "tun-go-mod", "tun-quality-swift", "tun-worker-tests", "tun-toolchain", "release-check"],
+      "other_generated_compiler_and_test_caches_moved_to_trash": [
+        "tun-go-cache",
+        "tun-go-mod",
+        "tun-quality-swift",
+        "tun-worker-tests",
+        "tun-toolchain",
+        "release-check"
+      ],
       "preserved_0_2_0_baseline": true,
       "raw_test_evidence_preserved": true,
       "app_launched_after_replacement": true,
@@ -95,13 +108,18 @@
     "working_user_preferences_preserved": true
   },
   "live_evidence_boundary": {
-    "owner_two_way_discord_audio_and_roblox_gameplay_build": "3",
-    "latest_live_build_6_activation_verified": false,
+    "owner_two_way_discord_audio_and_roblox_gameplay_build": "6",
+    "previous_owner_confirmed_builds": ["3"],
+    "latest_live_build_6_activation_verified": true,
     "later_build_3_stop_cause": "unknown",
     "later_stop_fixed_claimed": false,
     "thirty_minute_stability_verified": false,
     "new_logging_scope": "Fixed local categories for future caught failures; no retrospective cause is inferred",
-    "new_lifecycle_scope": "Startup cancellation and known-lease detach verification changed; TCP, UDP forwarding, TLS and DNS algorithms were not changed"
+    "new_lifecycle_scope": "Startup cancellation and known-lease detach verification changed; TCP, UDP forwarding, TLS and DNS algorithms were not changed",
+    "bounded_at_most_thirty_minute_trial_passed": true,
+    "latest_live_record": "0.3.0-build6-live-personal.json",
+    "latest_process_sample_seconds": 1543.679,
+    "build_6_owner_bidirectional_voice_gameplay_and_reconnection_confirmed": true
   },
   "publication": {
     "source_uploaded_in_this_work": false,
@@ -112,8 +130,7 @@
     "requires_explicit_publication_approval": true
   },
   "remaining_validation": [
-    "Fresh approved live activation, bounded stability and Disable/restoration verification using build 6",
-    "Approved live failure, reconnect, sleep/wake and network/VPN transitions",
+    "Longer daily reliability sampling; live failure, sleep/wake and network/VPN transitions",
     "Intel, older macOS and physical IPv6 runtime coverage",
     "Remote CI execution and selected Reddit community rules before publication"
   ]

@@ -12,7 +12,9 @@
 - Build 5 uses neutral wording for cleanup-confirmed failures instead of attributing an unknown stop to the helper. A later build 3 stop remains unexplained and is recorded separately; extended stability is not claimed.
 
 - Build 6 adds fixed-category local failure diagnostics. Worker categories require a failed final session outcome; normal stop/cancellation does not produce a worker-failure log. Stop before readiness is normal cancellation, and known-lease detach is verified even without ownership or a journal.
-- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. Build 6 Overview/Settings were manually checked while Disabled without changing settings. The three native UI cases remain prior automated results; no live build 6 or 30-minute result is claimed.
+- Build 6 passed 130 core, 27 hosted model and 14 packaging cases, 23 current Debug CLI scenarios and four native TCP/UDP IPv4/IPv6 scenarios. Full Go, 15-second mixed traffic per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. Build 6 Overview/Settings were manually checked while Disabled without changing settings. The three native UI cases remain prior automated results; the later owner-approved live trial is recorded separately.
+
+- Build 6 passed a bounded owner-approved GUI trial: Discord messaging/two-way audio and voice rejoining, Roblox gameplay/rejoining, 26 public HTTPS/API checks, and all eight baseline fingerprints plus resolver restoration after Disable. No unexpected stop was observed. The monitored interval was about 25 min 44 s, not exact 30-minute Active stability. Combined sampled CPU averaged 0.231% of one core and peak RSS was 152.64 MiB with uncontrolled owner traffic; the older stop remains unexplained.
 
 ## 0.2.0 — local review
 

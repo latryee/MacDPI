@@ -4,7 +4,7 @@ A native, open-source macOS DPI circumvention app for supported desktop traffic.
 
 **0.3.0 Personal TUN preview** uses a local virtual interface, direct TCP/UDP forwarding and TLS ClientHello record splitting. Open the app, press **Enable**, approve macOS authorization and use supported applications without configuring their proxies. No paid Apple Developer membership, remote VPN server or separately installed DPI tool is required.
 
-**Current status:** this is a testing preview. Discord two-way audio and a Roblox game session were confirmed by the owner on one Mac/network. A later session stopped unexpectedly with verified cleanup; its cause is unresolved. Extended daily reliability is not yet verified. [Detailed evidence](docs/TUN_VERIFICATION.md) · [Engineering report](docs/PERSONAL_REPORT_0.3.0.md)
+**Current status:** this is a testing preview with successful build 6 personal acceptance on one Mac/network. The owner confirmed Discord messaging, two-way audio, a Roblox game and rejoining both services. An approved bounded trial completed with verified cleanup and no unexpected stop observed. An older build 3 stop remains unexplained; extended daily reliability is not established. [Detailed evidence](docs/TUN_VERIFICATION.md) · [Engineering report](docs/PERSONAL_REPORT_0.3.0.md)
 
 ## What it does
 
@@ -69,20 +69,20 @@ Enable temporarily adds MacDPI-owned capture routes. Disable releases the sessio
 
 | Area | Evidence |
 | --- | --- |
-| Personal application use | The owner confirmed Discord audio in both directions and joining and remaining in a Roblox game on the development Mac/network. |
-| Real network integration | GUI activation through macOS authorization, captured public routes, certificate-verified HTTPS/API/WSS and helper-confirmed Disable. An earlier short GUI trial matched all eight baseline policy fingerprints after cleanup. |
+| Personal application use | On build 6, the owner confirmed Discord messaging/two-way audio, a real Roblox game, voice rejoining with two-way audio and Roblox rejoining. The owner reported no noticeable delay; RTT and exact application-use minutes were not quantified. |
+| Real network integration | Build 6 completed 13 rounds of 26 certificate-verified public HTTPS/API requests while the public route used the tunnel. GUI Disable verified cleanup; all eight policy fingerprints and the resolver matched the baseline. Unauthenticated WSS evidence belongs to the earlier build 3 trial. |
 | Local correctness | Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The full Go suite, 15-second mixed runs per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. [Current results](docs/TUN_VERIFICATION.md) |
 | Current loopback integration | 23 scenarios passed with the current Debug CLI, plus four native TCP/UDP IPv4/IPv6 scenarios. These do not activate real capture routes. |
 | Build and packaging | Universal 2 signatures and exact extracted ZIP/DMG contents verified. [Current package record](docs/verification/0.3.0-release-readiness.json) |
-| Short resource sample | Over 496 seconds with uncontrolled owner traffic, the app/engine/helper averaged 0.411% of one CPU core and peaked at 130.33 MiB combined RSS. This is not a strict idle or long-term benchmark. [Measurements](PERFORMANCE.md) |
+| Live resource sample | 307 samples covered 1543.679 seconds, about 25 min 44 s, while build 6 was enabled with uncontrolled owner traffic. App/engine/helper averaged 0.231% of one CPU core and peaked at 152.64 MiB combined sampled RSS, about 160.1 MB. This is not a strict idle, battery or physical-footprint benchmark. [Measurements](PERFORMANCE.md) |
 
-The voice/game trial used build 3. Build 6 has separate local, lifecycle and packaging verification; it has not been counted as another live service trial. Build 6 received a manual read-only check of its Disabled Overview and Personal TUN/Automatic setup Settings. No setting or activation was changed. The three automated native UI cases belong to a prior run; they were not rerun for build 6. The late unexpected stop is recorded in [the follow-up report](docs/verification/0.3.0-late-stop.json).
+Build 6 now has an owner-approved GUI-driven live trial as well as local and packaging verification. The 30-minute authorization window included setup and shutdown; the monitored enabled interval was about 25 min 44 s, not an exact 30-minute Active stability test. The three automated native UI cases remain a prior run, not a rerun for build 6. [Latest trial](docs/verification/0.3.0-build6-live-personal.json). The late unexpected stop is recorded in [the follow-up report](docs/verification/0.3.0-late-stop.json).
 
 ## Limits and troubleshooting
 
 Circumvention depends on the network, application and filtering method. It does not guarantee access to every site or protocol. Encrypted or absent visible server names can prevent selective repair. Existing VPNs, filters and split-DNS policies can affect coverage; detected conflicts can prevent activation or stop a session.
 
-Thirty-minute stability, sleep/wake, network/VPN switching, deliberate crash recovery, reconnect behavior and quantified voice/game latency still need dedicated real-world validation. The unresolved later stop prevents a general reliability claim.
+An exact 30-minute Active stability run, sleep/wake, network/VPN switching, deliberate crash recovery, broader reconnect coverage and quantified voice/game latency still need dedicated validation. The successful bounded trial does not explain or prove a fix for the older stop, or establish general reliability.
 
 | Symptom | Next step |
 | --- | --- |
