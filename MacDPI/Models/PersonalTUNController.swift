@@ -99,7 +99,7 @@ final class PersonalTUNController {
     }
 
     func stop(completion: ((Bool) -> Void)? = nil) {
-        guard process != nil else { completion?(phase != .recovery); return }
+        guard let child = process else { completion?(phase != .recovery); return }
         if let completion { completions.append(completion) }
         guard phase != .stopping && phase != .restoring else { return }
         if !mayHaveRoutes, authorization?.isRunning == true { authorization?.terminate() }
@@ -109,10 +109,18 @@ final class PersonalTUNController {
         stopTimeout?.cancel()
         stopTimeout = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 28_000_000_000)
-            guard !Task.isCancelled, let self, self.process != nil else { return }
-            self.process?.terminate()
+            guard !Task.isCancelled, let self, self.process === child else { return }
+            // SIGTERM is now a graceful request. Preserve the existing hard-stop
+            // deadline if the protocol does not acknowledge cleanup in time.
+            Self.forceTerminate(child)
             self.finish(.recovery, "No cleanup acknowledgement arrived. Run the recovery check before enabling again.")
         }
+    }
+
+    @discardableResult
+    static func forceTerminate(_ child: Process) -> Bool {
+        guard child.isRunning else { return false }
+        return Darwin.kill(child.processIdentifier, SIGKILL) == 0
     }
 
     private func launchAuthorization(_ launcher: Process) {

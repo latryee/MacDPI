@@ -123,11 +123,12 @@ private let recovery = UInt8(ascii: "F")
     }
 }
 
-private func awaitEvent(broker: Int32, engine: Int32, timeout: Int32) -> Event {
-    let descriptors = [STDIN_FILENO, broker, engine]
+private func awaitEvent(broker: Int32, engine: Int32, stopChannel: TUNStopChannel, timeout: Int32) -> Event {
+    let descriptors = [stopChannel.readDescriptor, broker, engine]
     var fds = descriptors.map { pollfd(fd: $0, events: Int16(POLLIN), revents: 0) }
     let deadline = timeout >= 0 ? DispatchTime.now() + .milliseconds(Int(timeout)) : nil
     while true {
+        if stopChannel.isRequested { return .parentStop }
         let remaining: Int32
         if let deadline {
             let now = DispatchTime.now().uptimeNanoseconds
@@ -170,8 +171,8 @@ private func confirmRestoration(_ broker: Int32, then outcome: Outcome) -> Outco
     return .recoveryRequired
 }
 
-private func run(_ options: Options) -> Outcome {
-    let broker = options.session.withCString { macdpi_tun_broker_connect($0, STDIN_FILENO, 90_000) }
+private func run(_ options: Options, stopChannel: TUNStopChannel) -> Outcome {
+    let broker = options.session.withCString { macdpi_tun_broker_connect($0, stopChannel.readDescriptor, 90_000) }
     guard broker >= 0 else {
         switch errno {
         case ECANCELED: return .cancelled
@@ -195,7 +196,9 @@ private func run(_ options: Options) -> Outcome {
         close(packet)
         return confirmRestoration(broker, then: .failed)
     }
-    guard parentListening else {
+    // Receive and close any transferred descriptor before asking the broker to
+    // detach. A queued SCM_RIGHTS reference can otherwise keep the interface alive.
+    guard parentListening, !stopChannel.isRequested else {
         close(packet)
         return confirmRestoration(broker, then: .disabled)
     }
@@ -241,18 +244,22 @@ private func run(_ options: Options) -> Outcome {
         }
     }
 
-    let readyEvent = awaitEvent(broker: broker, engine: controllerLease, timeout: 12_000)
+    let readyEvent = awaitEvent(broker: broker, engine: controllerLease, stopChannel: stopChannel, timeout: 12_000)
     guard case .engine(ready) = readyEvent else { return stopForEvent(readyEvent) }
     guard macdpi_tun_control_send(broker, ready) == 0 else { return stopEngine(.failed) }
 
-    let activeEvent = awaitEvent(broker: broker, engine: controllerLease, timeout: 20_000)
+    let activeEvent = awaitEvent(broker: broker, engine: controllerLease, stopChannel: stopChannel, timeout: 20_000)
     guard case .broker(active) = activeEvent else { return stopForEvent(activeEvent) }
     guard report("ACTIVE") else { return stopEngine(.disabled) }
-    return stopForEvent(awaitEvent(broker: broker, engine: controllerLease, timeout: -1))
+    return stopForEvent(awaitEvent(broker: broker, engine: controllerLease, stopChannel: stopChannel, timeout: -1))
 }
 
 signal(SIGPIPE, SIG_IGN)
-private let outcome = Options(arguments: CommandLine.arguments).map(run) ?? .failed
+private let stopChannel = TUNStopChannel()
+private let outcome: Outcome = {
+    guard let stopChannel, let options = Options(arguments: CommandLine.arguments) else { return .failed }
+    return run(options, stopChannel: stopChannel)
+}()
 private let sessionFailed = outcome == .failed || outcome == .failedClean || outcome == .recoveryRequired
 if let result = workerCompletion.exitCode,
    let category = TUNFailureCategory.worker(exitCode: result, sessionFailed: sessionFailed)?.rawValue {

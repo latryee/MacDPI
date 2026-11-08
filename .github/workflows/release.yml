@@ -22,6 +22,7 @@ jobs:
           scripts/fetch-tun-toolchain.sh
           scripts/test-tun-worker.sh
           scripts/test-tun-ipc.sh
+          python3 scripts/test-tun-stop-channel.py
       - name: Prepare personal Universal 2 ZIP, DMG and checksums
         run: MACDPI_PERSONAL_TUN=1 MACDPI_BUILD_ROOT=build/personal scripts/package-release.sh --dmg
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

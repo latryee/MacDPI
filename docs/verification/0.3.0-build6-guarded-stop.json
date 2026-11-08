@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-08T01:44:32.813426+00:00",
+  "version": "0.3.0",
+  "build": "6",
+  "result": "Historical guarded sleep trial inconclusive; independent cleanup verified after an abrupt deadline-guard stop",
+  "approval": {
+    "maximum_trial_seconds": 180,
+    "started_at_utc": "2026-11-08T01:36:01.019807+00:00",
+    "entry": "The owner-enabled session was already Active at first inspection; no new Enable was sent.",
+    "window_compliance": "not demonstrated",
+    "boundary": "A guard stop signal was recorded, but the independent restoration check was recorded later than the approved trial window. These records do not establish that every stop, UI and cleanup check met the deadline."
+  },
+  "baseline": {
+    "source": "Last independently verified Disabled snapshot from the build 6 idle trial",
+    "snapshot_recorded_at_utc": "2026-11-08T01:01:01.811580+00:00",
+    "fresh_pre_enable_snapshot": false,
+    "boundary": "The app was already Active when this trial was inspected, so this is a comparison with the last verified Disabled baseline, not a newly captured pre-Enable baseline."
+  },
+  "sleep_wake": {
+    "owner_reported_sleep_and_wake": true,
+    "owner_report_scope": "The owner reported waking and unlocking the machine; this does not establish that physical sleep occurred within the observer interval.",
+    "observer_stop_reason": "test-process-exited-or-identity-changed",
+    "observer_ended_at_utc": "2026-11-08T01:38:17.835946+00:00",
+    "observations": 135,
+    "final_clock_observation": {
+      "awake_seconds": 136.78558412499999,
+      "continuous_seconds": 136.78558458333333,
+      "estimated_sleep_seconds": 4.583333463870076e-7,
+      "bracket_uncertainty_seconds": 2.3333333333333327e-6
+    },
+    "measurable_physical_sleep_observed": false,
+    "physical_sleep_while_active_verified": false,
+    "result": "inconclusive",
+    "boundary": "The final continuous-minus-awake clock gap was approximately 0.458 microseconds, within the approximately 2.333 microsecond bracket uncertainty. The observer ended after the guard terminated the engine, before measurable physical sleep was captured. This is neither a sleep/wake pass nor a sleep/wake failure."
+  },
+  "guarded_stop": {
+    "action": "deadline-stop-signal-sent",
+    "signal": "SIGTERM",
+    "signal_sent": true,
+    "recorded_at_utc": "2026-11-08T01:38:17.086864+00:00",
+    "scope": "One identity-pinned same-user engine process",
+    "ui_phase_after_abrupt_stop": "Recovery required",
+    "cleanup_acknowledgement_received": false,
+    "ui_claimed_cleanup_verified": false,
+    "boundary": "The abrupt termination lost the application's cleanup acknowledgement. The Recovery required UI did not falsely claim a clean stop. Independent read-only checks subsequently established restoration; that later evidence is separate from the missing UI acknowledgement."
+  },
+  "public_probes": {
+    "before_guarded_stop": {
+      "recorded_at_utc": "2026-11-08T01:36:34.977815+00:00",
+      "ordinary_https_passed": true,
+      "discord_api_https_passed": true
+    },
+    "after_owner_reported_wake": {
+      "recorded_at_utc": "2026-11-08T01:38:43.740595+00:00",
+      "ordinary_https_curl_exit": 0,
+      "ordinary_https_http_status": 200,
+      "discord_api_curl_exit": 60
+    },
+    "boundary": "The ordinary HTTPS probe passed after the owner-reported wake. The API probe returned to the established certificate-validation failure outside the tunnel. Because the engine had already stopped, these probes do not verify an Active tunnel surviving physical sleep/wake."
+  },
+  "restoration": {
+    "recorded_at_utc": "2026-11-08T01:44:32.813426+00:00",
+    "matched_policy_categories": [
+      "dns",
+      "interfaces",
+      "network-policy",
+      "physical-defaults",
+      "primary-service",
+      "protected-prefixes",
+      "proxies",
+      "service-order"
+    ],
+    "differing_policy_categories": [],
+    "all_eight_policy_fingerprints_match": true,
+    "resolver_snapshot_matches": true,
+    "public_route_restored": true,
+    "test_capture_interface_names_absent": true,
+    "engine_and_helper_absent": true,
+    "exact_owned_staging_directory_absent": true,
+    "ordinary_https_curl_exit": 0,
+    "ordinary_https_http_status": 200,
+    "discord_api_curl_exit": 60,
+    "scope": "Independent read-only comparison with the last verified Disabled baseline. No original settings were rewritten to force a match. The API certificate failure matches the established outside-tunnel baseline."
+  },
+  "limits": {
+    "historical_record_only": true,
+    "fresh_live_trial_performed_for_this_record": false,
+    "sleep_wake_acceptance_pass_claimed": false,
+    "sleep_wake_failure_claimed": false,
+    "broader_daily_reliability_verified": false,
+    "published": false
+  }
+}

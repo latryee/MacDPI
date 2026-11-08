@@ -4,7 +4,7 @@ A native, open-source macOS DPI circumvention app for supported desktop traffic.
 
 **0.3.0 Personal TUN preview** uses a local virtual interface, direct TCP/UDP forwarding and TLS ClientHello record splitting. Open the app, press **Enable**, approve macOS authorization and use supported applications without configuring their proxies. No paid Apple Developer membership, remote VPN server or separately installed DPI tool is required.
 
-**Current status:** this is a testing preview with successful build 6 personal acceptance on one Mac/network. The owner confirmed Discord messaging, two-way audio, a Roblox game and rejoining both services. An approved bounded trial completed with verified cleanup and no unexpected stop observed. An older build 3 stop remains unexplained; extended daily reliability is not established. [Detailed evidence](docs/TUN_VERIFICATION.md) · [Engineering report](docs/PERSONAL_REPORT_0.3.0.md)
+**Current status:** build 7 is a locally verified testing preview. Build 6 passed personal acceptance on one Mac/network. The owner confirmed Discord messaging, two-way audio, a Roblox game and rejoining both services. An approved bounded trial completed with verified cleanup and no unexpected stop observed. An older build 3 stop remains unexplained; extended daily reliability is not established. [Detailed evidence](docs/TUN_VERIFICATION.md) · [Engineering report](docs/PERSONAL_REPORT_0.3.0.md)
 
 ## What it does
 
@@ -47,7 +47,7 @@ cd build/personal/dist
 shasum -a 256 -c MacDPI-0.3.0-universal2-personal-adhoc.sha256
 ```
 
-These paths describe generated artifacts, not published downloads. The build 6 artifacts have not been uploaded or published.
+These paths describe generated artifacts, not published downloads. The current build 7 artifacts have not been uploaded or published.
 
 ### Signing and compatibility
 
@@ -71,7 +71,7 @@ Enable temporarily adds MacDPI-owned capture routes. Disable releases the sessio
 | --- | --- |
 | Personal application use | On build 6, the owner confirmed Discord messaging/two-way audio, a real Roblox game, voice rejoining with two-way audio and Roblox rejoining. The owner reported no noticeable delay; RTT and exact application-use minutes were not quantified. |
 | Real network integration | Build 6 completed 13 rounds of 26 certificate-verified public HTTPS/API requests while the public route used the tunnel. GUI Disable verified cleanup; all eight policy fingerprints and the resolver matched the baseline. Unauthenticated WSS evidence belongs to the earlier build 3 trial. |
-| Local correctness | Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The full Go suite, 15-second mixed runs per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. [Current results](docs/TUN_VERIFICATION.md) |
+| Local correctness | Build 7 passed 29 hosted model, 14 packaging, four operator guard and 13 native stop-channel cases; its packaged engine passed three unprivileged cancellation checks. Unchanged core/data-plane checks from build 6 include 130 Swift core cases. The full Go suite, 15-second mixed runs per family, synthetic IPv4 96-TCP/64-UDP capacity, UDP lifecycle/race and native IPC checks passed. [Current results](docs/TUN_VERIFICATION.md) |
 | Current loopback integration | 23 scenarios passed with the current Debug CLI, plus four native TCP/UDP IPv4/IPv6 scenarios. These do not activate real capture routes. |
 | Build and packaging | Universal 2 signatures and exact extracted ZIP/DMG contents verified. [Current package record](docs/verification/0.3.0-release-readiness.json) |
 | Live resource sample | 307 samples covered 1543.679 seconds, about 25 min 44 s, while build 6 was enabled with uncontrolled owner traffic. App/engine/helper averaged 0.231% of one CPU core and peaked at 152.64 MiB combined sampled RSS, about 160.1 MB. This is not a strict idle, battery or physical-footprint benchmark. [Measurements](PERFORMANCE.md) |
@@ -113,6 +113,7 @@ The normal suites use synthetic packets and loopback fixtures. They do not activ
 swift test --scratch-path build/swift
 scripts/test-tun-worker.sh
 scripts/test-tun-ipc.sh
+python3 scripts/test-tun-stop-channel.py
 python3 -m unittest discover -s Tests/PackagingTests
 ```
 

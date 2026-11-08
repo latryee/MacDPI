@@ -43,9 +43,11 @@ The host must be authorized to install system extensions and use both Network Ex
 
 After separate upload authorization and setup of an Apple notary keychain profile, run `scripts/notarize.sh KEYCHAIN_PROFILE`. It makes a fresh archive from the verified Developer ID app, submits it, waits for acceptance, staples, validates Gatekeeper acceptance and regenerates packages and checksums. [Notarization script](scripts/notarize.sh), [Apple notarization documentation](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
 
-Update the shared marketing version and advance the build number with `scripts/set-version.py MAJOR.MINOR.PATCH`. The current version is 0.3.0/build 6. Xcode and the portable build stamp the shared version into components. Review the changelog and release notes before packaging. GitHub Actions prepares and checks review artifacts on macOS runners; the manual preparation workflow now produces the personal TUN package. Remote CI, Developer ID signing and notarization await an authorized run. Publishing is a separate maintainer action. [GitHub runner labels](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+Update the shared marketing version and advance the build number with `scripts/set-version.py MAJOR.MINOR.PATCH`. The current version is 0.3.0/build 7. Xcode and the portable build stamp the shared version into components. Review the changelog and release notes before packaging. GitHub Actions prepares and checks review artifacts on macOS runners; the manual preparation workflow now produces the personal TUN package. Remote CI, Developer ID signing and notarization await an authorized run. Publishing is a separate maintainer action. [GitHub runner labels](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 
 ## Current personal release checks
+
+Build 7 passed 29 hosted model, 14 packaging, four operator deadline and 13 native stop-channel cases. The exact Go-linked packaged engine passed SIGTERM, SIGINT and parent-EOF cancellation while waiting for an absent broker. These checks created no real TUN. The Universal 2 ZIP/DMG, extracted content, signatures and post-promotion checksums passed. Manual Overview/Settings inspection confirmed Disabled and Automatic setup without changing settings. Real build 7 activation, graceful signal shutdown and physical sleep/wake still require an approved live trial. The unchanged core/data-plane results below belong to build 6.
 
 Build 6 passed 130 Swift core, 27 hosted model and 14 packaging cases. The current Debug CLI passed 23 loopback scenarios; four native TCP/UDP IPv4/IPv6 scenarios, the full Go suite with 15-second mixed traffic per family, capacity/lifecycle checks and native IPC also passed. Exact archives, signatures and post-promotion checksums were verified. [Current release proof](docs/verification/0.3.0-release-readiness.json).
 
@@ -61,4 +63,7 @@ This is a best-effort signal deadline, not proof that restoration finished by th
 
 ```sh
 python3 -m unittest discover -s Tests/OperatorTests -v
+python3 scripts/test-tun-stop-channel.py
 ```
+
+The stop-channel fixture uses pipes, signals and absent random broker sessions as a normal user. It checks graceful cancellation without creating an interface, starting a privileged helper or changing routes.

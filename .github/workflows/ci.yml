@@ -39,6 +39,7 @@ jobs:
           scripts/fetch-tun-toolchain.sh
           scripts/test-tun-worker.sh
           scripts/test-tun-ipc.sh
+          python3 scripts/test-tun-stop-channel.py
       - name: Universal 2 app and provider compilation
         run: scripts/build-app.sh
       - name: Prepare local review archive

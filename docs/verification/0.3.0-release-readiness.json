@@ -1,61 +1,48 @@
 {
-  "schema_version": 1,
-  "recorded_at_utc": "2026-11-07T23:48:33Z",
-  "last_updated_at_utc": "2026-11-08T01:27:14.026129+00:00",
+  "schema_version": 2,
+  "recorded_at_utc": "2026-11-08T09:17:51.584449+00:00",
   "version": "0.3.0",
-  "build": "6",
-  "status": "Build6 scoped personal acceptance passed; preview prepared; broader validation and publication approval pending",
+  "build": "7",
+  "status": "Locally verified personal preview; build 7 authorized live lifecycle validation pending",
   "fully_verified_release": false,
-  "tests": {
-    "swift_core_passed": 130,
-    "hosted_model_passed": 27,
+  "changes": [
+    "SIGTERM, SIGINT and parent input/EOF request broker-acknowledged shutdown through a process-lifetime stop channel",
+    "Existing 28-second UI hard fallback targets only the captured child; no normal session timer added",
+    "TCP, UDP, TLS, DNS and route algorithms unchanged from build 6"
+  ],
+  "current_checks": {
+    "hosted_model_passed": 29,
     "packaging_passed": 14,
-    "legacy_proxy_loopback_integrations_passed": 23,
-    "legacy_proxy_binary_configuration": "Current-source SwiftPM Debug CLI; timing samples are not release-performance claims",
-    "native_provider_transport_loopback_cases_passed": 4,
-    "native_provider_transport_scope": "TCP and UDP on IPv4 and IPv6; no Network Extension activation",
-    "native_tun_ipc_passed": true,
-    "native_tun_ipc_scope": "Descriptor handoff, stop, timeout, EOF, live audit token and code hash; no real TUN or route changes",
-    "go_worker_full_normal_suite_passed": true,
-    "mixed_tcp_udp_fixture_seconds_per_family": 15,
-    "mixed_tcp_udp_fixture_families": [
-      "IPv4",
-      "IPv6"
-    ],
-    "tcp_capacity_fixture_flows": 96,
-    "udp_capacity_fixture_flows": 64,
-    "capacity_scope": "Synthetic IPv4 packet paths to loopback peers; rejects excess admission, preserves existing flows and verifies cancellation cleanup. IPv6 has separate integrity and mixed-load coverage.",
-    "udp_relay_lifecycle_passed": true,
-    "udp_relay_lifecycle_scope": "Native Unix datagram pairs exercise idle expiry, one-way empty-datagram activity in both directions and context cancellation",
-    "go_targeted_udp_relay_race_run_passed": true,
-    "go_targeted_udp_relay_race_selector": "^TestUDPRelay",
-    "whole_go_race_suite_claimed": false,
-    "failure_category_tests_passed": true,
-    "failure_category_scope": "Fixed broker categories exclude error descriptions; worker categories are suppressed unless the final session outcome failed",
-    "early_release_retry_regression_passed": true,
-    "early_release_retry_scope": "An absent journal or relinquished descriptor ownership does not prove detach; a known interface or associated route still prevents a clean result",
-    "startup_stop_before_readiness": "Compiled helper branch recognizes S before R; real authorized startup-cancellation validation remains pending",
-    "unprivileged_packaged_helper_rejected": true,
-    "fixed_broker_category_observed_in_local_unified_log": true,
-    "unified_log_smoke_scope": "Only the unprivileged fixture PID and MacDPI subsystem/category were queried; no personal traffic or root invocation",
-    "native_ui_cases_from_prior_run": 3,
-    "current_native_ui_run_performed": false,
-    "current_gui_inspection": "Manual inspection of the verified stable build 6 passed after the Mac became accessible. This is not an automated UI test or live activation.",
-    "manual_gui_check": {
-      "recorded_at_utc": "2026-11-07T23:56:17Z",
-      "overview_disabled_and_enable_available": true,
-      "resource_card_present_measurement_disabled_while_inactive": true,
-      "settings_personal_tun_and_automatic_setup_checked": true,
-      "automatic_standard_system_dns_scope_visible": true,
-      "launch_at_login_unchecked": true,
-      "running_executable_matches_verified_stable_build_6": true,
-      "engine_and_helper_absent": true,
-      "settings_changed": false,
-      "enable_pressed_or_authorization_requested": false,
-      "prior_unavailability": "An earlier inspection could not proceed while the Mac was locked; no alternative unlock mechanism was used"
-    },
     "operator_deadline_guard_cases_passed": 4,
-    "operator_deadline_guard_live_fallback_verified": false
+    "native_stop_channel_cases_passed": 13,
+    "packaged_go_linked_engine_absent_broker_cancellation_cases": [
+      {
+        "trigger": "SIGTERM",
+        "exit": 3,
+        "output": "CANCELLED",
+        "seconds": 0.002931875000000028
+      },
+      {
+        "trigger": "SIGINT",
+        "exit": 3,
+        "output": "CANCELLED",
+        "seconds": 0.0032489999999998354
+      },
+      {
+        "trigger": "parent-eof",
+        "exit": 3,
+        "output": "CANCELLED",
+        "seconds": 0.0032674169999999947
+      }
+    ],
+    "cancellation_scope": "Normal-user pipes/signals and absent random broker sessions; no helper, TUN or route changes",
+    "manual_gui": "Verified stable build 7 Disabled, Enable available, Personal TUN and Automatic setup selected; no setting changed or activation requested",
+    "automated_native_ui_rerun": false,
+    "focused_independent_source_review": "No actionable findings"
+  },
+  "unchanged_source_checks": {
+    "record": "0.3.0-build6-release.json",
+    "scope": "Prior core130, loopback23, native transport4, Go full/mixed/capacity/lifecycle/race and IPC results retained; not rerun or relabeled as build7 runs"
   },
   "packaging": {
     "architectures": [
@@ -73,75 +60,51 @@
     "notarized": false,
     "stable_app_path": "build/personal/release/MacDPI.app",
     "stable_archive_directory": "build/personal/dist",
-    "promotion": {
-      "app_engine_and_helper_absent_before_replacement": true,
-      "expected_binary_hashes_checked_before_replacement": true,
-      "signature_and_archive_checks_repeated_after_move": true,
-      "superseded_personal_build_and_candidate_caches_moved_to_trash": true,
-      "other_generated_compiler_and_test_caches_moved_to_trash": [
-        "tun-go-cache",
-        "tun-go-mod",
-        "tun-quality-swift",
-        "tun-worker-tests",
-        "tun-toolchain",
-        "release-check"
-      ],
-      "preserved_0_2_0_baseline": true,
-      "raw_test_evidence_preserved": true,
-      "app_launched_after_replacement": true,
-      "post_replacement_launch_scope": "Later unprivileged manual GUI inspection only; app remained Disabled"
-    }
+    "inactive_processes_verified_before_promotion": true,
+    "post_promotion_signatures_and_checksums_verified": true,
+    "preserved_0_2_0_baseline": true,
+    "superseded_artifacts_moved_to_trash": true,
+    "raw_verification_evidence_preserved": true
   },
   "binary_sha256": {
-    "host": "d96af06e7b646e0c885b3c4f1523ed7f8aa21a3abf8f0fac7c5450ae97609c6e",
-    "engine": "15f8e579f3c6850b657e85ea68360c9226a057128d886ae2555a71f7dd631d2b",
+    "host": "e13017541cebe79a0fe7d15312424c4016c5f09297c953a01bc2eb03c7d9e45b",
+    "engine": "d9f75e595a6d71811aee65506c556604e028c377c64ab1a615a6924ff63987a2",
     "helper": "cb6f67cdcb99d7164425d3672c55891e7a5ca1e9d836ee8b9d7143a200735f31"
   },
   "archive_sha256": {
-    "MacDPI-0.3.0-universal2-personal-adhoc.zip": "7392df086152b19de2cdeea500369717fa54a5a800bbea3760ac96cad50166e5",
-    "MacDPI-0.3.0-universal2-personal-adhoc.dmg": "f4724e07db2ae9bb0482493a05e06c21837d46bd53ca592128a670185a02759b"
-  },
-  "source_hygiene": {
-    "prior_history_revisions_pattern_scanned": 14,
-    "history_pattern_match_files": 0,
-    "current_candidate_pattern_match_files": 0,
-    "scan_limits": "Private-key headers, common GitHub tokens and AWS access-key ID prefixes only; not an exhaustive credential audit",
-    "user_specific_ide_preferences_removed_from_git_index_only": true,
-    "working_user_preferences_preserved": true
+    "MacDPI-0.3.0-universal2-personal-adhoc.dmg": "29e3946ac90ec07b595a7858cc6ab04a269b1e86c1517ad5997f1a740e7c6ceb",
+    "MacDPI-0.3.0-universal2-personal-adhoc.zip": "f43e0cc73121d083f3764458c976252dbbc7e56f32dd415208d13a6839148a56"
   },
   "live_evidence_boundary": {
-    "owner_two_way_discord_audio_and_roblox_gameplay_build": "6",
-    "previous_owner_confirmed_builds": [
-      "3"
-    ],
-    "latest_live_build_6_activation_verified": true,
-    "later_build_3_stop_cause": "unknown",
-    "later_stop_fixed_claimed": false,
-    "thirty_minute_stability_verified": false,
-    "new_logging_scope": "Fixed local categories for future caught failures; no retrospective cause is inferred",
-    "new_lifecycle_scope": "Startup cancellation and known-lease detach verification changed; TCP, UDP forwarding, TLS and DNS algorithms were not changed",
-    "bounded_at_most_thirty_minute_trial_passed": true,
-    "latest_live_record": "0.3.0-build6-live-personal.json",
-    "latest_process_sample_seconds": 1543.679,
-    "build_6_owner_bidirectional_voice_gameplay_and_reconnection_confirmed": true
+    "latest_voice_gameplay_build": "6",
+    "owner_bidirectional_audio_gameplay_rejoining_confirmed": true,
+    "latest_voice_gameplay_record": "0.3.0-build6-live-personal.json",
+    "idle_record": "0.3.0-build6-idle.json",
+    "inconclusive_sleep_and_guarded_stop_record": "0.3.0-build6-guarded-stop.json",
+    "physical_sleep_wake_verified": false,
+    "build_7_real_tun_signal_cleanup_verified": false,
+    "older_build_3_stop_cause": "unknown",
+    "thirty_minute_active_stability_verified": false
   },
   "publication": {
     "source_uploaded_in_this_work": false,
     "github_release_published": false,
     "reddit_post_published": false,
-    "reddit_community_selected": false,
-    "community_posting_rules_verified": false,
-    "requires_explicit_publication_approval": true
+    "github_destination": "https://github.com/latryee/MacDPI",
+    "github_publication_authorization": "Owner requested upload when completely finished; final validation and authentication remain",
+    "reddit_community_selected": false
   },
   "remaining_validation": [
-    "Longer daily reliability sampling; live failure, sleep/wake and network/VPN transitions",
-    "Intel, older macOS and physical IPv6 runtime coverage",
-    "Remote CI execution and selected Reddit community rules before publication"
+    "Build 7 GUI activation, graceful signal stop and independent real-network restoration",
+    "Physical sleep/wake with same-process clock evidence and immediate connectivity check",
+    "Longer daily reliability, network/VPN transitions, Intel/older macOS and physical IPv6 runtime",
+    "Remote CI execution; Reddit community selection and rules before posting"
   ],
-  "performance_followup": {
-    "record": "0.3.0-build6-idle.json",
-    "practical_foreground_idle_sample_verified": true,
-    "physical_sleep_wake_verified": false,
-    "quiet_trial_approved_window_compliance": "not demonstrated"
+  "source_hygiene": {
+    "candidate_files_pattern_scanned": 194,
+    "private_key_or_common_token_pattern_match_files": 0,
+    "local_markdown_targets_checked": 127,
+    "broken_local_targets": 0,
+    "scope": "Pattern scan only; not an exhaustive credential audit"
   }
 }
