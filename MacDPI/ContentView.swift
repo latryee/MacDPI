@@ -225,8 +225,9 @@ struct ContentView: View {
             Text(model.diagnostics)
                 .font(.system(.callout, design: .monospaced))
                 .textSelection(.enabled)
-                .accessibilityLabel(model.diagnostics)
                 .accessibilityIdentifier("diagnostics-text")
+                // Recreate the selectable host on content changes to avoid stale accessibility nodes.
+                .id(model.diagnostics)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18).background(Color.primary.opacity(0.04)).cornerRadius(10)
             if model.integrationMode != .personalTUN {
