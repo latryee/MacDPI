@@ -272,8 +272,13 @@ final class IntegrationLifecycleTests: XCTestCase {
     func testStartDeadlineRollsBackAndDropsDelayedReadyReply() async throws {
         let driver = FixtureIntegrationDriver(); driver.deferStart = true
         let lifecycle = IntegrationLifecycle(driver: driver, operationTimeout: 0.02)
+        let rolledBack = expectation(description: "Start deadline rollback completed")
+        lifecycle.changed = { status in
+            if status.phase == .failed { rolledBack.fulfill() }
+        }
         lifecycle.enable(configuration: Configuration(), explicitConsent: true)
-        try await Task.sleep(nanoseconds: 80_000_000)
+        await fulfillment(of: [rolledBack], timeout: 2)
+        lifecycle.changed = nil
         XCTAssertEqual(lifecycle.status.phase, .failed)
         XCTAssertEqual(lifecycle.status.detail, IntegrationFailure.timedOut.rawValue)
         XCTAssertEqual(driver.stops, 1)
@@ -285,9 +290,14 @@ final class IntegrationLifecycleTests: XCTestCase {
     func testStopDeadlineFailsOnceAndIgnoresLateCompletion() async throws {
         let driver = FixtureIntegrationDriver(); driver.deferStop = true
         let lifecycle = IntegrationLifecycle(driver: driver, operationTimeout: 0.02)
+        let stopped = expectation(description: "Stop deadline failure reported")
+        lifecycle.changed = { status in
+            if status.phase == .failed { stopped.fulfill() }
+        }
         var completions = 0
         lifecycle.disable { _ in completions += 1 }
-        try await Task.sleep(nanoseconds: 80_000_000)
+        await fulfillment(of: [stopped], timeout: 2)
+        lifecycle.changed = nil
         XCTAssertEqual(lifecycle.status.phase, .failed)
         XCTAssertEqual(completions, 1)
         driver.deferredStop?(.success(IntegrationObservation()))
@@ -380,8 +390,13 @@ final class IntegrationLifecycleTests: XCTestCase {
         let driver = FixtureIntegrationDriver()
         driver.observation.extensionState = .enabled; driver.observation.connection = .reasserting
         let lifecycle = IntegrationLifecycle(driver: driver, operationTimeout: 0.02)
+        let stalled = expectation(description: "Wake observation deadline failure reported")
+        lifecycle.changed = { status in
+            if status.phase == .failed { stalled.fulfill() }
+        }
         lifecycle.refresh()
-        try await Task.sleep(nanoseconds: 60_000_000)
+        await fulfillment(of: [stalled], timeout: 2)
+        lifecycle.changed = nil
         XCTAssertEqual(lifecycle.status.phase, .failed)
         XCTAssertEqual(driver.starts, 0); XCTAssertEqual(driver.stops, 0)
     }
