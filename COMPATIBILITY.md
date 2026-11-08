@@ -7,10 +7,10 @@ The 0.3.0 personal build compiles the host, route helper and packet engine for a
 | Enable and authorization | GUI activation through macOS authorization, real captured public route and verified HTTPS | Intel and macOS 12 runtime |
 | TCP/UDP | IPv4 physical HTTPS; IPv4/IPv6 synthetic integrity, loss and mixed-load fixtures | Physical IPv6, UDP interference, WAN jitter and throughput |
 | Automatic setup | Standard TLS split, ordinary System DNS and selective validated DoH origin repair | Other networks, destinations, ECH and resolver policies |
-| Discord desktop/voice | Owner confirmed bidirectional audio; public API and unauthenticated WSS passed over TUN | Independent voice RTT/loss, extended sessions and reconnect |
-| Roblox gameplay | Owner confirmed joining a real game and remaining connected | Quantified gameplay duration, reconnect and other games/networks |
-| Disable | Helper-confirmed detach, old processes exited; earlier short GUI trial matched all eight baseline fingerprints | Forced termination, sleep/wake and network/VPN switching |
-| Resources | 496 s with owner traffic: 0.41% combined CPU, 130.33 MiB peak RSS | Strict idle, battery and 30-minute stability measurements |
+| Discord desktop/voice | Build 6 owner confirmed messaging, bidirectional audio and voice rejoining; public API passed. Earlier unauthenticated WSS passed | Quantified voice RTT/loss, exact use duration and broader reconnect coverage |
+| Roblox gameplay | Build 6 owner confirmed joining, remaining connected and rejoining a real game | Quantified duration/RTT and other games/networks |
+| Disable and sleep/wake | Build 6 GUI Disable and build 7 graceful signal stop reached verified Disabled with all eight policy/resolver checks. Build 7 preserved original processes and capture route across 10.97 s of measured physical sleep with valid HTTPS/API after wake | Abrupt crash, repeated/longer sleep and network/VPN switching |
+| Resources | Build 6 owner traffic: 1543.679 s, 0.231% combined CPU, 152.64 MiB peak RSS. Separate practical quiet 121.27 s: 0.066%, 141.41 MiB (148.28 MB) | Strict zero-traffic idle, battery, leak bounds and exact 30-minute Active stability |
 
 The following matrix preserves the evidence for the **previous Network Extension and local proxy paths**. Their installed system extensions remain separate from Personal TUN.
 

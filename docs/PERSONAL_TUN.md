@@ -8,6 +8,7 @@ This build packages a separate unprivileged UI and data engine plus a short-live
 scripts/fetch-tun-toolchain.sh
 scripts/test-tun-worker.sh
 scripts/test-tun-ipc.sh
+python3 scripts/test-tun-stop-channel.py
 scripts/test-tun-route-snapshot.sh
 swift test --scratch-path build/swift
 MACDPI_PERSONAL_TUN=1 MACDPI_BUILD_ROOT=build/personal scripts/package-release.sh --dmg

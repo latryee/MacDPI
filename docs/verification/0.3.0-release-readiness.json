@@ -3,7 +3,7 @@
   "recorded_at_utc": "2026-11-08T09:17:51.584449+00:00",
   "version": "0.3.0",
   "build": "7",
-  "status": "Locally verified personal preview; build 7 authorized live lifecycle validation pending",
+  "status": "Current-Mac personal acceptance and build7 sleep/graceful-stop lifecycle passed; public testing preview prepared; GitHub authentication pending",
   "fully_verified_release": false,
   "changes": [
     "SIGTERM, SIGINT and parent input/EOF request broker-acknowledged shutdown through a process-lifetime stop channel",
@@ -81,10 +81,15 @@
     "latest_voice_gameplay_record": "0.3.0-build6-live-personal.json",
     "idle_record": "0.3.0-build6-idle.json",
     "inconclusive_sleep_and_guarded_stop_record": "0.3.0-build6-guarded-stop.json",
-    "physical_sleep_wake_verified": false,
-    "build_7_real_tun_signal_cleanup_verified": false,
+    "physical_sleep_wake_verified": true,
+    "build_7_real_tun_signal_cleanup_verified": true,
     "older_build_3_stop_cause": "unknown",
-    "thirty_minute_active_stability_verified": false
+    "thirty_minute_active_stability_verified": false,
+    "build_7_sleep_shutdown_record": "0.3.0-build7-sleep-shutdown.json",
+    "build_7_measured_sleep_seconds": 10.9668155,
+    "build_7_controller_seconds": 149.746943,
+    "build_7_controller_completed_within_approved_five_minutes": true,
+    "build_7_voice_gameplay_rerun": false
   },
   "publication": {
     "source_uploaded_in_this_work": false,
@@ -92,19 +97,20 @@
     "reddit_post_published": false,
     "github_destination": "https://github.com/latryee/MacDPI",
     "github_publication_authorization": "Owner requested upload when completely finished; final validation and authentication remain",
-    "reddit_community_selected": false
+    "reddit_community_selected": false,
+    "github_authentication_available": false
   },
   "remaining_validation": [
-    "Build 7 GUI activation, graceful signal stop and independent real-network restoration",
-    "Physical sleep/wake with same-process clock evidence and immediate connectivity check",
-    "Longer daily reliability, network/VPN transitions, Intel/older macOS and physical IPv6 runtime",
-    "Remote CI execution; Reddit community selection and rules before posting"
+    "Longer daily reliability, repeated/longer sleep, deliberate abrupt crash and network/VPN transitions",
+    "Intel/older macOS and physical IPv6 runtime; battery/leak/physical throughput measurements",
+    "Authenticated GitHub upload and actual remote CI; Reddit community selection/rules before posting"
   ],
   "source_hygiene": {
-    "candidate_files_pattern_scanned": 194,
+    "candidate_files_pattern_scanned": 195,
     "private_key_or_common_token_pattern_match_files": 0,
-    "local_markdown_targets_checked": 127,
+    "local_markdown_targets_checked": 131,
     "broken_local_targets": 0,
     "scope": "Pattern scan only; not an exhaustive credential audit"
-  }
+  },
+  "last_updated_at_utc": "2026-11-08T09:36:32.440585+00:00"
 }

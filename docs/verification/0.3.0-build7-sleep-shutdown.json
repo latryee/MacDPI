@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-08T09:31:45.186790+00:00",
+  "version": "0.3.0",
+  "build": "7",
+  "result": "Scoped live lifecycle acceptance passed: GUI Enable, public HTTPS/API, measured physical sleep/wake with the same session, graceful SIGTERM shutdown and independent baseline restoration",
+  "approval": {
+    "maximum_trial_seconds": 300,
+    "started_at_utc": "2026-11-08T09:29:15.439847+00:00",
+    "controller_ended_at_utc": "2026-11-08T09:31:45.186790+00:00",
+    "workflow_seconds": 149.746943,
+    "workflow_duration_clock": "Difference between the original recorded UTC start and controller-end labels; not a monotonic or continuous Active-state benchmark",
+    "scope": "Owner-approved GUI Enable, fixed public HTTPS/API probes, physical sleep/wake and graceful SIGTERM to the original identity-pinned same-user engine, followed by read-only restoration checks",
+    "controller_completed_before_deadline": true,
+    "wake_after_deadline": false,
+    "dns_proxy_or_vpn_settings_changed": false,
+    "sleep_deadline_limitation": "No user process executes while the machine sleeps. A late wake would fail the bounded trial and trigger a bounded best-effort graceful stop; this trial woke and completed before the deadline."
+  },
+  "baseline": {
+    "snapshot_recorded_at_utc": "2026-11-08T09:24:53.839900+00:00",
+    "fresh_pre_enable_disabled_snapshot": true,
+    "scope": "Read-only Disabled baseline captured before the approved test; no network mutation or external request was needed to capture it"
+  },
+  "gui": {
+    "enable_sent_through_gui": true,
+    "active_observed": true,
+    "final_disabled_observed": true,
+    "final_cleanup_status": "helper verified interface/routes gone",
+    "scope": "Computer-use observations of the Active session and final Disabled state; the controller timestamps below establish the bounded probe, shutdown and restoration interval"
+  },
+  "sleep_wake": {
+    "result": "passed",
+    "requested_sleep_seconds_approximately": 20,
+    "measured_sleep_seconds": 10.966815499999996,
+    "sleep_lower_bound_seconds": 10.966812291666661,
+    "physical_sleep_while_active_verified": true,
+    "same_host_engine_and_helper_identities_alive_after_wake": true,
+    "same_capture_route_preserved_after_wake": true,
+    "observations": 436,
+    "clock_method": "Same-observer Mach continuous-minus-absolute elapsed-time gap; absolute reads bracket each continuous read, with original bracket uncertainty preserved",
+    "initial_clock_observation": {
+      "recorded_at_utc": "2026-11-08T09:29:34.802847+00:00",
+      "awake_seconds": 0.000025833333333169506,
+      "continuous_seconds": 0.000025791666666608037,
+      "estimated_sleep_seconds": -0.000000041666666561468446,
+      "bracket_uncertainty_seconds": 0.0000015833333333333331
+    },
+    "sleep_detected_clock_observation": {
+      "recorded_at_utc": "2026-11-08T09:31:43.565390+00:00",
+      "awake_seconds": 117.76008537499999,
+      "continuous_seconds": 128.72690087499998,
+      "estimated_sleep_seconds": 10.966815499999996,
+      "bracket_uncertainty_seconds": 0.000003208333333333333
+    },
+    "post_wake_clock_observation": {
+      "recorded_at_utc": "2026-11-08T09:31:44.755511+00:00",
+      "awake_seconds": 118.96136195833331,
+      "continuous_seconds": 129.9281770833333,
+      "estimated_sleep_seconds": 10.966815124999997,
+      "bracket_uncertainty_seconds": 0.0000021666666666666665
+    },
+    "boundary": "The observed physical sleep was approximately 11 seconds, not the requested approximately 20 seconds. The initial small negative gap is within the original clock bracket uncertainty and has not been clamped. Clock observations establish sleep; the separate immediate public probes establish post-wake connectivity."
+  },
+  "public_probes": {
+    "fixed_endpoints": [
+      "https://example.com/",
+      "https://discord.com/api/v10/gateway"
+    ],
+    "active_requests": 4,
+    "all_active_requests_passed_with_certificate_validation": true,
+    "before_sleep": {
+      "recorded_at_utc": "2026-11-08T09:29:34.796615+00:00",
+      "same_host_engine_and_helper_identities_alive": true,
+      "test_capture_route_preserved": true,
+      "probes": [
+        {
+          "label": "ordinary",
+          "recorded_at_utc": "2026-11-08T09:29:33.696633+00:00",
+          "valid": true,
+          "certificate_verification_enabled": true,
+          "curl_exit": 0,
+          "http_status": 200,
+          "total_seconds": 0.746149
+        },
+        {
+          "label": "discord_api",
+          "recorded_at_utc": "2026-11-08T09:29:34.452775+00:00",
+          "valid": true,
+          "certificate_verification_enabled": true,
+          "curl_exit": 0,
+          "http_status": 200,
+          "total_seconds": 0.322937
+        }
+      ]
+    },
+    "after_wake_before_stop": {
+      "recorded_at_utc": "2026-11-08T09:31:44.755511+00:00",
+      "same_host_engine_and_helper_identities_alive": true,
+      "same_test_capture_route_preserved": true,
+      "probes": [
+        {
+          "label": "ordinary",
+          "recorded_at_utc": "2026-11-08T09:31:43.708609+00:00",
+          "valid": true,
+          "certificate_verification_enabled": true,
+          "curl_exit": 0,
+          "http_status": 200,
+          "total_seconds": 0.400450
+        },
+        {
+          "label": "discord_api",
+          "recorded_at_utc": "2026-11-08T09:31:44.123873+00:00",
+          "valid": true,
+          "certificate_verification_enabled": true,
+          "curl_exit": 0,
+          "http_status": 200,
+          "total_seconds": 0.606460
+        }
+      ]
+    },
+    "scope": "Unauthenticated fixed public endpoints with certificate verification and a three-second per-request timeout. API response shape was checked without retaining its body. Request durations are not voice/game latency, TCP-connect RTT or a controlled performance comparison."
+  },
+  "graceful_shutdown": {
+    "recorded_at_utc": "2026-11-08T09:31:44.755973+00:00",
+    "signal": "SIGTERM",
+    "signal_sent": true,
+    "only_original_same_user_engine_targeted": true,
+    "original_engine_exited": true,
+    "wait_limit_seconds": 28,
+    "deadline_already_passed": false,
+    "scope": "The original engine identity was checked again immediately before signalling. The host and helper were not directly signalled."
+  },
+  "restoration": {
+    "recorded_at_utc": "2026-11-08T09:31:45.185923+00:00",
+    "matched_policy_categories": [
+      "dns",
+      "interfaces",
+      "network-policy",
+      "physical-defaults",
+      "primary-service",
+      "protected-prefixes",
+      "proxies",
+      "service-order"
+    ],
+    "differing_policy_categories": [],
+    "all_eight_policy_fingerprints_match": true,
+    "resolver_snapshot_matches": true,
+    "public_route_restored": true,
+    "test_capture_interface_names_absent": true,
+    "engine_and_helper_absent": true,
+    "exact_owned_staging_directory_absent": true,
+    "all_restoration_checks_passed": true,
+    "check_errors": {},
+    "started_after_deadline": false,
+    "ordinary_https_after_stop": {
+      "recorded_at_utc": "2026-11-08T09:31:45.003372+00:00",
+      "valid": true,
+      "certificate_verification_enabled": true,
+      "curl_exit": 0,
+      "http_status": 200,
+      "total_seconds": 0.175475
+    },
+    "scope": "Independent read-only comparison with the fresh Disabled baseline. No settings, routes, resolvers or staging files were rewritten to force a match."
+  },
+  "limits": {
+    "single_host_single_network_bounded_trial": true,
+    "owner_accounts_voice_or_gameplay_rerun": false,
+    "latest_owner_voice_gameplay_and_reconnection_build": "6",
+    "owner_application_evidence_record": "0.3.0-build6-live-personal.json",
+    "twenty_second_physical_sleep_verified": false,
+    "thirty_minute_active_stability_verified": false,
+    "network_or_vpn_transition_verified": false,
+    "broader_daily_reliability_verified": false,
+    "published": false,
+    "sanitization": "Response bodies, network addresses, usernames, process identifiers, exact interface names and owned staging paths are omitted. Original private clock observations and UTC labels are preserved above."
+  }
+}

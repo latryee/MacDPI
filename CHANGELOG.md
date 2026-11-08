@@ -2,7 +2,7 @@
 
 ## 0.3.0 personal TUN preview
 
-- Build 7 handles termination signals and parent disconnection through graceful shutdown, retaining the captured-child hard fallback after 28 seconds. It passed 29 hosted model, 14 packaging, four operator guard, 13 native stop-channel and three packaged-engine absent-broker cancellation checks. Universal 2 ZIP/DMG verification and Disabled GUI inspection passed; real build 7 active shutdown and physical sleep/wake are pending. Build 6 voice/game evidence remains separate.
+- Build 7 handles termination signals and parent disconnection through graceful shutdown, retaining the captured-child hard fallback after 28 seconds. It passed 29 hosted model, 14 packaging, four operator guard, 13 native stop-channel and three packaged-engine absent-broker cancellation checks. Universal 2 ZIP/DMG verification and Disabled GUI inspection passed; a later approved GUI trial verified physical sleep/wake, HTTPS/API before/after, graceful signal shutdown to Disabled and all eight policy/resolver cleanup checks within 149.75 seconds of a five-minute maximum. Build 6 voice/game evidence remains separate.
 
 - Added a separate ad hoc build with an unprivileged dual-stack TCP/UDP engine and session-scoped route helper.
 - Added guarded route plans, durable ownership records and recovery checks. Preserved local diagnostics and the optional signed Network Extension build.
